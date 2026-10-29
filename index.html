@@ -150,7 +150,7 @@ table.piv td.klik:hover .hoev{color:#e8eefc}
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.16</span>
+  <span class="versie" title="Versie">v1.17</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="expBtn" hidden title="Alle gegevens downloaden als back-up">⬇ Back-up</button>
@@ -394,9 +394,9 @@ const buiten = (dlg,e) => { const r=dlg.getBoundingClientRect(); return e.client
 ['click','contextmenu'].forEach(t=>$('dlgInfo').addEventListener(t, e=>{ if(buiten($('dlgInfo'),e)){ e.preventDefault(); $('dlgInfo').close(); } }));
 function renderInfo(){
   const items = INFO.items, O = INFO.open;
-  const veelSoort = new Set(items.map(x=>x.sub)).size>1, nk = veelSoort?4:3;
+  const veelSoort = new Set(items.map(x=>x.sub)).size>1, nk = veelSoort?6:5;
   const L = {}; items.forEach(x=>{ const l=x.loc||'?', a=afdNaam(x.afd); ((L[l]=L[l]||{})[a]=L[l][a]||[]).push(x); });
-  let h = `<table class="info"><thead><tr><th>Object</th>${veelSoort?'<th>Soort</th>':''}<th class="r">Aantal</th><th class="r">Waarde</th></tr></thead><tbody>`;
+  let h = `<table class="info"><thead><tr><th>Object</th>${veelSoort?'<th>Soort</th>':''}<th class="r">Aantal</th><th>Eenheid</th><th class="r">Prijs</th><th class="r">Waarde</th></tr></thead><tbody>`;
   for(const loc of Object.keys(L).sort((a,b)=>a.localeCompare(b,'nl',{numeric:true}))){
     const kL='L:'+loc, oL=O.has(kL), afds=Object.keys(L[loc]).sort(afdSort), all=Object.values(L[loc]).flat();
     h += `<tr class="itog i1" data-k="${esc(kL)}"><td colspan="${nk-1}"><span class="pijl">${oL?'▼':'▶'}</span>${esc(locName(loc))}<span class="aantal">(${afds.length} afdeling${afds.length>1?'en':''}, ${all.length} objecten)</span></td><td class="r">${eur0(sum(all,x=>x.waarde))}</td></tr>`;
@@ -405,7 +405,7 @@ function renderInfo(){
       const kA='A:'+loc+'|'+afd, oA=O.has(kA), it=L[loc][afd];
       h += `<tr class="itog i2" data-k="${esc(kA)}"><td colspan="${nk-1}"><span class="pijl">${oA?'▼':'▶'}</span>${esc(afd)}<span class="aantal">(${it.length})</span></td><td class="r">${eur0(sum(it,x=>x.waarde))}</td></tr>`;
       if(!oA) continue;
-      it.sort((a,b)=>(b.waarde||0)-(a.waarde||0)).forEach(x=> h += `<tr class="i3"><td>${esc(x.obj)}${x.opm?` <span class="muted">– ${esc(x.opm)}</span>`:''}</td>${veelSoort?`<td class="muted">${esc(x.sub)}</td>`:''}<td class="r">${nf(x.aantal)} ${esc(x.eenh)}</td><td class="r">${eur0(x.waarde)}</td></tr>`);
+      it.sort((a,b)=>(b.waarde||0)-(a.waarde||0)).forEach(x=> h += `<tr class="i3"><td>${esc(x.obj)}${x.opm?` <span class="muted">– ${esc(x.opm)}</span>`:''}</td>${veelSoort?`<td class="muted">${esc(x.sub)}</td>`:''}<td class="r">${nf(x.aantal)}</td><td class="muted">${esc(x.eenh)}</td><td class="r">${eur(x.prijs)}</td><td class="r">${eur0(x.waarde)}</td></tr>`);
     }
   }
   h += `</tbody><tfoot><tr><td colspan="${nk-1}">Totaal (${items.length} objecten)</td><td class="r">${eur0(sum(items,x=>x.waarde))}</td></tr></tfoot></table>`;
