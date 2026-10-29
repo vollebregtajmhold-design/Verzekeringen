@@ -125,8 +125,15 @@ dialog.breed{width:min(820px,96vw);max-height:88vh}
 #infoInhoud{max-height:62vh;overflow:auto}
 table.info{font-size:14px}
 table.info td,table.info th{padding:5px 10px}
-table.info td.afd{background:#e4e4e4;vertical-align:top;white-space:nowrap;width:1%}
-table.info tr.eerste td{border-top:2px solid #888}
+table.info tr.itog{cursor:pointer;user-select:none}
+table.info tr.itog .pijl{display:inline-block;width:18px;color:var(--green)}
+table.info tr.itog .aantal{font-weight:400;color:#555;margin-left:6px}
+table.info tr.i1 td{background:#a3a3a3;font-weight:700}
+table.info tr.i1:hover td{background:#959595}
+table.info tr.i2 td{background:#d3d3d3;font-weight:700}
+table.info tr.i2:hover td{background:#c4c4c4}
+table.info tr.i2 td:first-child{padding-left:28px}
+table.info tr.i3 td:first-child{padding-left:48px}
 table.info .aantal{font-weight:400;color:#555}
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
@@ -138,7 +145,7 @@ table.info .aantal{font-weight:400;color:#555}
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.12</span>
+  <span class="versie" title="Versie">v1.13</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="expBtn" hidden title="Alle gegevens downloaden als back-up">⬇ Back-up</button>
@@ -225,7 +232,7 @@ table.info .aantal{font-weight:400;color:#555}
 </div>
 <dialog id="dlg"><form id="frm" method="dialog"><h2 id="dlgTitel"></h2><div id="velden"></div>
 <div class="knoppen"><button class="btn" value="annuleer" formnovalidate>Annuleren</button><button class="btn blue" id="opslaan" value="ok">Opslaan</button></div></form></dialog>
-<dialog id="dlgInfo" class="breed"><form method="dialog"><h2 id="infoTitel"></h2><div id="infoInhoud" class="tw"></div><div class="knoppen"><button class="btn blue">Sluiten</button></div></form></dialog>
+<dialog id="dlgInfo" class="breed"><form method="dialog"><h2 id="infoTitel"></h2><div id="infoInhoud" class="tw"></div><div class="knoppen"><button type="button" class="btn klein" id="infoOpen">▼ Alles open</button><button type="button" class="btn klein" id="infoDicht">▶ Alles dicht</button><span style="flex:1"></span><button class="btn blue">Sluiten</button></div></form></dialog>
 <div id="toast" hidden></div>
 
 <script type="module">
@@ -366,18 +373,39 @@ $('pZ').addEventListener('click', e=>{
   const ps=c.dataset.ps, pc=c.dataset.pc, { r, colOf, l } = PIV;
   const items = r.filter(x=>(ps==='*'||(x.sub||'Overig')===ps) && (pc==='*'||colOf(x)===pc));
   const waar = [ps==='*'?'Alle soorten':ps, pc==='*'?(l?locName(l):'alle locaties'):(l?locName(l)+' · '+pc:pc)].join(' – ');
-  const veelLoc = new Set(items.map(x=>x.loc)).size>1, veelSoort = new Set(items.map(x=>x.sub)).size>1;
-  const G = {}; items.forEach(x=>{ const k=(veelLoc?locName(x.loc||'?')+' · ':'')+afdNaam(x.afd); (G[k]=G[k]||[]).push(x); });
-  let h = `<table class="info"><thead><tr><th>Afdeling</th><th>Object</th>${veelSoort?'<th>Soort</th>':''}<th class="r">Aantal</th><th class="r">Waarde</th></tr></thead><tbody>`;
-  Object.keys(G).sort((a,b)=>{ const n=v=>/afd/i.test(v)?0:1; return a.localeCompare(b,'nl',{numeric:true}) && (veelLoc ? a.localeCompare(b,'nl',{numeric:true}) : n(a)-n(b) || a.localeCompare(b,'nl',{numeric:true})); }).forEach(k=>{
-    G[k].sort((a,b)=>(b.waarde||0)-(a.waarde||0)).forEach((x,i)=>{
-      h += `<tr${i===0?' class="eerste"':''}>` + (i===0 ? `<td class="afd" rowspan="${G[k].length}"><b>${esc(k)}</b><div class="muted">${eur0(sum(G[k],y=>y.waarde))}</div></td>` : '') +
-        `<td>${esc(x.obj)}${x.opm?` <span class="muted">– ${esc(x.opm)}</span>`:''}</td>${veelSoort?`<td class="muted">${esc(x.sub)}</td>`:''}<td class="r">${nf(x.aantal)} ${esc(x.eenh)}</td><td class="r">${eur0(x.waarde)}</td></tr>`;
-    });
-  });
-  h += `</tbody><tfoot><tr><td colspan="${veelSoort?4:3}">Totaal (${items.length} objecten)</td><td class="r">${eur0(sum(items,x=>x.waarde))}</td></tr></tfoot></table>`;
-  $('infoTitel').textContent = waar; $('infoInhoud').innerHTML = h; $('dlgInfo').showModal();
+  INFO = { items, open:new Set() };
+  const locs = [...new Set(items.map(x=>x.loc||'?'))];
+  if(locs.length===1) INFO.open.add('L:'+locs[0]);   // één locatie: die staat meteen open, afdelingen dicht
+  $('infoTitel').textContent = waar;
+  renderInfo();
+  $('dlgInfo').showModal();
 });
+let INFO = null;
+function renderInfo(){
+  const items = INFO.items, O = INFO.open;
+  const veelSoort = new Set(items.map(x=>x.sub)).size>1, nk = veelSoort?4:3;
+  const L = {}; items.forEach(x=>{ const l=x.loc||'?', a=afdNaam(x.afd); ((L[l]=L[l]||{})[a]=L[l][a]||[]).push(x); });
+  let h = `<table class="info"><thead><tr><th>Object</th>${veelSoort?'<th>Soort</th>':''}<th class="r">Aantal</th><th class="r">Waarde</th></tr></thead><tbody>`;
+  for(const loc of Object.keys(L).sort((a,b)=>a.localeCompare(b,'nl',{numeric:true}))){
+    const kL='L:'+loc, oL=O.has(kL), afds=Object.keys(L[loc]).sort(afdSort), all=Object.values(L[loc]).flat();
+    h += `<tr class="itog i1" data-k="${esc(kL)}"><td colspan="${nk-1}"><span class="pijl">${oL?'▼':'▶'}</span>${esc(locName(loc))}<span class="aantal">(${afds.length} afdeling${afds.length>1?'en':''}, ${all.length} objecten)</span></td><td class="r">${eur0(sum(all,x=>x.waarde))}</td></tr>`;
+    if(!oL) continue;
+    for(const afd of afds){
+      const kA='A:'+loc+'|'+afd, oA=O.has(kA), it=L[loc][afd];
+      h += `<tr class="itog i2" data-k="${esc(kA)}"><td colspan="${nk-1}"><span class="pijl">${oA?'▼':'▶'}</span>${esc(afd)}<span class="aantal">(${it.length})</span></td><td class="r">${eur0(sum(it,x=>x.waarde))}</td></tr>`;
+      if(!oA) continue;
+      it.sort((a,b)=>(b.waarde||0)-(a.waarde||0)).forEach(x=> h += `<tr class="i3"><td>${esc(x.obj)}${x.opm?` <span class="muted">– ${esc(x.opm)}</span>`:''}</td>${veelSoort?`<td class="muted">${esc(x.sub)}</td>`:''}<td class="r">${nf(x.aantal)} ${esc(x.eenh)}</td><td class="r">${eur0(x.waarde)}</td></tr>`);
+    }
+  }
+  h += `</tbody><tfoot><tr><td colspan="${nk-1}">Totaal (${items.length} objecten)</td><td class="r">${eur0(sum(items,x=>x.waarde))}</td></tr></tfoot></table>`;
+  $('infoInhoud').innerHTML = h;
+}
+$('infoInhoud').addEventListener('click', e=>{
+  const r = e.target.closest('tr.itog'); if(!r) return;
+  const k = r.dataset.k; INFO.open.has(k) ? INFO.open.delete(k) : INFO.open.add(k); renderInfo();
+});
+$('infoOpen').onclick = () => { INFO.items.forEach(x=>{ INFO.open.add('L:'+(x.loc||'?')); INFO.open.add('A:'+(x.loc||'?')+'|'+afdNaam(x.afd)); }); renderInfo(); };
+$('infoDicht').onclick = () => { INFO.open.clear(); renderInfo(); };
 function drawPivot(r, l){
   // kolommen: per afdeling als er een locatie gekozen is, anders per locatie
   const colOf = x => l ? afdNaam(x.afd) : locName(x.loc||'?');
