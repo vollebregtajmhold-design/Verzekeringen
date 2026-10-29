@@ -1,5 +1,7 @@
 # Verzekeringen overzicht – met Google-login
 
+Versie 1.4 (29-10-2026): rustiger lettertype (Arial), minder vet.
+Versie 1.3 (29-10-2026): eigen icoon, installeren als app.
 Versie 1.2 (29-10-2026): wijzigen, toevoegen en verwijderen in de pagina. Knop Back-up.
 Versie 1.1 (29-10-2026): versienummer + knop volledig scherm.
 
