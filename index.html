@@ -90,6 +90,19 @@ dialog textarea{min-height:140px}
 dialog .knoppen{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
 dialog .btn{font-size:14px;padding:7px 16px}
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;font-weight:700;padding:10px 18px;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.4);z-index:50}
+.herstel{cursor:pointer;text-decoration:underline;opacity:.8}
+.herstel:hover{opacity:1}
+.cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
+.ck{background:var(--card);border-left:5px solid var(--lime);border-radius:6px;padding:14px 16px;box-shadow:0 6px 14px rgba(0,0,0,.3);display:flex;flex-direction:column;gap:6px}
+.ck h3{margin:0;font-size:17px;font-weight:700}
+.ck .rol{color:#777;font-size:13px;margin-top:-4px}
+.ck a.r1{display:flex;gap:8px;align-items:center;color:var(--blue);text-decoration:none;font-size:14px;word-break:break-all}
+.ck a.r1:hover{text-decoration:underline}
+.ck .pol{font-size:12px;color:#7a3e10;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:4px}
+.ck .opm{font-size:13px;color:#555;white-space:pre-line}
+.ck .eb{margin-top:4px}
+a.mij{color:inherit;text-decoration:underline dotted;cursor:pointer}
+.leeg{background:var(--card);border-radius:6px;padding:20px;color:#555}
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -100,11 +113,10 @@ dialog .btn{font-size:14px;padding:7px 16px}
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.4</span>
+  <span class="versie" title="Versie">v1.6</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="expBtn" hidden title="Alle gegevens downloaden als back-up">⬇ Back-up</button>
-    <label class="btn" id="upBtn" hidden title="Alle gegevens vervangen door een bestand">⬆ Importeren<input type="file" id="upFile" accept=".json" hidden></label>
     <button class="btn" id="uit">Uitloggen</button>
   </div>
   <button class="fs" id="fsBtn" title="Volledig scherm aan/uit">⛶ Volledig scherm</button>
@@ -131,6 +143,7 @@ dialog .btn{font-size:14px;padding:7px 16px}
   <button data-t="prive">Privé</button>
   <button data-t="bez">Bezittingen</button>
   <button data-t="tijd">Aandachtspunten</button>
+  <button data-t="contact">Contacten</button>
 </div></nav>
 <main>
   <section id="home" class="on">
@@ -167,11 +180,21 @@ dialog .btn{font-size:14px;padding:7px 16px}
     <div class="card tw"><table id="tZ"></table></div>
   </section>
 
+  <section id="contact">
+    <div class="tools">
+      <input type="search" id="qC" placeholder="Zoek op naam, maatschappij, e-mail of telefoon…">
+      <button class="btn add" data-add="contacten">+ Contact toevoegen</button>
+      <button class="btn add" id="seedC" title="Maak voor elke maatschappij uit je polissen een contactkaart">+ Maatschappijen uit polissen</button>
+    </div>
+    <div class="cgrid" id="cgrid"></div>
+  </section>
+
   <section id="tijd">
     <div class="card"><h2>Tijdlijn en aandachtspunten <button class="btn add" data-add="tijd">+ Overleg toevoegen</button></h2><div class="tl" id="tl"></div></div>
     <div class="card"><h2>Overige links <button class="btn add" data-add="extra">+ Toevoegen</button></h2><ul class="links" id="extra"></ul></div>
   </section>
   <div class="sub" id="bron"></div>
+  <div class="sub"><label id="upBtn" hidden class="herstel" title="Alle gegevens vervangen door een back-up">Back-up terugzetten<input type="file" id="upFile" accept=".json" hidden></label></div>
 </main>
 </div>
 <dialog id="dlg"><form id="frm" method="dialog"><h2 id="dlgTitel"></h2><div id="velden"></div>
@@ -187,7 +210,7 @@ import { getFirestore, doc, getDoc, writeBatch, runTransaction } from 'https://w
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const KEYS = ['bedrijf','prive','priveNotes','bez','tijd','extra'];
+const KEYS = ['bedrijf','prive','priveNotes','bez','tijd','extra','contacten'];
 const $ = id => document.getElementById(id);
 let D = null, USER = null, EDIT = false;
 
@@ -254,6 +277,7 @@ function render(){
   fillSelect('sZ', [...new Set(D.bez.map(x=>x.sub).filter(Boolean))].sort());
   drawZ();
 
+  drawC();
   $('extra').innerHTML = D.extra.map(e=>`<li>${esc(e.tekst)}${lk(e.link,'Openen')} ${eb('extra',e.id)}</li>`).join('');
   $('tl').innerHTML = [...D.tijd].sort((a,b)=>String(a.datum).localeCompare(String(b.datum))).map(d=>`<div class="d">${d.datum?new Date(d.datum).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'}):'(geen datum)'}</div> ${eb('tijd',d.id)}<div class="note">Aanwezig: ${esc(d.wie)}</div><ul>${(d.punten||[]).map(p=>`<li>${esc(p.tekst)}${p.extra?` <span class="tag act">${esc(p.extra)}</span>`:''}</li>`).join('')}</ul>`).join('');
 }
@@ -265,7 +289,7 @@ function drawPolis(id, sec, q, extra){
   const r = D[sec].filter(x=>(!t || [x.wat,x.mij,x.polis,x.cat,x.opm].join(' ').toLowerCase().includes(t)) && (!extra || extra(x)));
   r.sort((a,b)=>{const A=a[st.key]??'',B=b[st.key]??''; return (typeof A==='number'&&typeof B==='number'?A-B:String(A).localeCompare(String(B),'nl',{numeric:true}))*st.dir;});
   $(id).innerHTML = '<thead><tr>'+cols.map(c=>`<th class="${c[2]||''}" data-k="${c[0]}">${c[1]}${st.key===c[0]?(st.dir>0?' ▲':' ▼'):''}</th>`).join('')+(EDIT?'<th></th>':'')+'</tr></thead><tbody>'+
-    r.map(x=>`<tr><td class="muted">${esc(x.nr)}</td><td>${esc(x.wat)}${lk(x.link)}</td><td>${esc(x.cat)}</td><td>${esc(x.mij)}</td><td>${esc(x.polis)}</td><td>${tag(x.verz)}</td><td>${act(x.actie)}</td><td class="r">${eur(x.premie)}</td><td class="muted">${esc(x.opm)}</td>${EDIT?`<td>${eb(sec,x.id)}</td>`:''}</tr>`).join('')+
+    r.map(x=>`<tr><td class="muted">${esc(x.nr)}</td><td>${esc(x.wat)}${lk(x.link)}</td><td>${esc(x.cat)}</td><td>${mijLink(x.mij)}</td><td>${esc(x.polis)}</td><td>${tag(x.verz)}</td><td>${act(x.actie)}</td><td class="r">${eur(x.premie)}</td><td class="muted">${esc(x.opm)}</td>${EDIT?`<td>${eb(sec,x.id)}</td>`:''}</tr>`).join('')+
     `</tbody><tfoot><tr><td colspan="7">Totaal (${r.length} regels)</td><td class="r">${eur(sum(r,x=>x.premie))}</td><td${EDIT?' colspan="2"':''}></td></tr></tfoot>`;
   $(id).querySelectorAll('th[data-k]').forEach(th=>th.onclick=()=>{ if(st.key===th.dataset.k) st.dir=-st.dir; else {st.key=th.dataset.k;st.dir=1;} drawPolis(id,sec,q,extra); });
   $(q).oninput = () => drawPolis(id,sec,q,extra);
@@ -287,6 +311,42 @@ function drawZ(){
 }
 ['qZ','lZ','sZ'].forEach(i=>$(i).oninput=drawZ);
 
+// ---------- contacten ----------
+const norm = v => String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+const heeftContact = m => m && D.contacten.some(c=>norm(c.org)===norm(m) || norm(c.naam)===norm(m));
+const mijLink = m => heeftContact(m) ? `<a class="mij" data-mij="${esc(m)}" title="Bekijk contactgegevens">${esc(m)}</a>` : esc(m);
+const webUrl = w => /^https?:\/\//i.test(w) ? w : 'https://'+w;
+function drawC(){
+  const t = $('qC').value.toLowerCase();
+  const r = D.contacten.filter(c=>!t || [c.naam,c.org,c.rol,c.tel,c.mob,c.email,c.web,c.adres,c.opm].join(' ').toLowerCase().includes(t))
+    .sort((a,b)=>String(a.org||a.naam).localeCompare(String(b.org||b.naam),'nl'));
+  if(!D.contacten.length){ $('cgrid').innerHTML = '<div class="leeg">Nog geen contacten. Klik op <b>✏️ Bewerken</b> en daarna op <b>+ Maatschappijen uit polissen</b> of <b>+ Contact toevoegen</b>.</div>'; return; }
+  $('cgrid').innerHTML = r.map(c=>{
+    const pol = [...D.bedrijf,...D.prive].filter(x=>x.mij && (norm(x.mij)===norm(c.org)||norm(x.mij)===norm(c.naam))).length;
+    return `<div class="ck">
+      <h3>${esc(c.naam||c.org)}</h3>
+      ${(c.org&&c.naam&&c.org!==c.naam)||c.rol?`<div class="rol">${esc([c.naam&&c.org!==c.naam?c.org:'',c.rol].filter(Boolean).join(' · '))}</div>`:''}
+      ${c.tel?`<a class="r1" href="tel:${esc(c.tel.replace(/[^+0-9]/g,''))}">📞 ${esc(c.tel)}</a>`:''}
+      ${c.mob?`<a class="r1" href="tel:${esc(c.mob.replace(/[^+0-9]/g,''))}">📱 ${esc(c.mob)}</a>`:''}
+      ${c.email?`<a class="r1" href="mailto:${esc(c.email)}">✉️ ${esc(c.email)}</a>`:''}
+      ${c.web?`<a class="r1" href="${esc(webUrl(c.web))}" target="_blank" rel="noopener">🌐 ${esc(c.web.replace(/^https?:\/\//,''))}</a>`:''}
+      ${c.login?`<a class="r1" href="${esc(webUrl(c.login))}" target="_blank" rel="noopener">🔑 Inloggen klantportaal</a>`:''}
+      ${c.adres?`<a class="r1" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.adres)}" target="_blank" rel="noopener">📍 ${esc(c.adres)}</a>`:''}
+      ${c.klantnr?`<div class="opm">Klantnummer: ${esc(c.klantnr)}</div>`:''}
+      ${c.opm?`<div class="opm">${esc(c.opm)}</div>`:''}
+      ${pol?`<div class="pol">${pol} polis${pol>1?'sen':''}</div>`:''}
+      ${eb('contacten',c.id)}
+    </div>`;}).join('') || '<div class="leeg">Niets gevonden.</div>';
+}
+$('qC').oninput = drawC;
+const WEB = { 'univé':'www.unive.nl', 'unive':'www.unive.nl', 'agriver':'www.agriver.nl', 'scildon':'www.scildon.nl', 'centraal beheer':'www.centraalbeheer.nl', 'bovemij renault':'www.bovemij.nl', 'bovemij':'www.bovemij.nl' };
+$('seedC').onclick = () => {
+  const mijen = [...new Set([...D.bedrijf,...D.prive].map(x=>(x.mij||'').trim()).filter(m=>m && !['nee','ja'].includes(m.toLowerCase())))];
+  const nieuw = mijen.filter(m=>!heeftContact(m));
+  if(!nieuw.length){ toast('Alle maatschappijen staan er al'); return; }
+  opslaan('contacten', items => items.concat(nieuw.map(m=>({ id:newId(), naam:m, org:m, rol:'Verzekeraar', web:WEB[m.toLowerCase()]||'' }))), nieuw.length+' toegevoegd');
+};
+
 // ---------- formulier ----------
 const POLIS = [['nr','Nr'],['wat','Wat verzekerd','text',1],['cat','Categorie','list'],['mij','Maatschappij','list'],['polis','Polisnummer'],['verz','Verzekerd','jn'],['actie','Actie nodig','jn'],['premie','Premie per jaar (€)','num'],['opm','Opmerking'],['link','Link naar document (Drive)','url']];
 const FIELDS = {
@@ -294,9 +354,10 @@ const FIELDS = {
   bez: [['loc','Locatie (bijv. 199, 207, 250)','list'],['afd','Afdeling','list'],['sub','Soort','list'],['obj','Object','text',1],['aantal','Aantal','num'],['eenh','Eenheid','list'],['prijs','Prijs per eenheid (€)','num'],['waarde','Waarde (€) – leeg laten = aantal × prijs','num'],['opm','Opmerking'],['link','Link naar document (Drive)','url']],
   priveNotes: [['tekst','Notitie','text',1],['link','Link (Drive)','url']],
   extra: [['tekst','Omschrijving','text',1],['link','Link','url',1]],
+  contacten: [['naam','Naam (persoon of bedrijf)','text',1],['org','Maatschappij / bedrijf','list'],['rol','Rol (bijv. adviseur, schade melden)','list'],['tel','Telefoon'],['mob','Mobiel'],['email','E-mail','email'],['web','Website'],['login','Link klantportaal (inloggen)'],['adres','Adres'],['klantnr','Klantnummer / relatienummer'],['opm','Opmerking','area']],
   tijd: [['datum','Datum','date',1],['wie','Aanwezig'],['punten','Punten – één per regel. Extra info na een | (bijv: Olietanken opzeggen | KJ vraagt na)','area']],
 };
-const NAMEN = { bedrijf:'zakelijke polis', prive:'privé polis', bez:'bezitting', priveNotes:'notitie', extra:'link', tijd:'overleg' };
+const NAMEN = { bedrijf:'zakelijke polis', prive:'privé polis', bez:'bezitting', priveNotes:'notitie', extra:'link', tijd:'overleg', contacten:'contact' };
 
 function openForm(sec, id){
   const item = id ? D[sec].find(x=>x.id===id) : (sec==='prive'?{cat:'Privé'}:{});
@@ -346,6 +407,8 @@ async function opslaan(sec, wijzig, melding){
 }
 
 document.addEventListener('click', e=>{
+  const mj=e.target.closest('[data-mij]');
+  if(mj){ $('qC').value=mj.dataset.mij; drawC(); document.querySelector('nav button[data-t="contact"]').click(); window.scrollTo(0,0); return; }
   const a=e.target.closest('[data-add]'); if(a){ openForm(a.dataset.add); return; }
   const ed=e.target.closest('[data-edit]'); if(ed){ openForm(ed.dataset.edit, ed.dataset.id); return; }
   const del=e.target.closest('[data-del]');
@@ -380,8 +443,8 @@ onAuthStateChanged(auth, async user => {
   try {
     const meta = await getDoc(doc(db,'overzicht','meta'));
     if (!meta.exists()) {
-      $('loginTekst').textContent = 'Er staan nog geen gegevens in de database. Klik bovenaan op "⬆ Importeren" en kies data.json.';
-      $('in').hidden = true; return;
+      $('loginTekst').textContent = 'Er staan nog geen gegevens in de database. Klik hieronder en kies je back-up of data.json.';
+      $('in').hidden = true; $('loginTekst').after($('upBtn')); $('upBtn').className='btn blue'; return;
     }
     D = { meta: meta.data() };
     const docs = await Promise.all(KEYS.map(k => getDoc(doc(db,'overzicht',k))));
