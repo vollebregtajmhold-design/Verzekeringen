@@ -103,6 +103,9 @@ dialog .btn{font-size:14px;padding:7px 16px}
 .ck .eb{margin-top:4px}
 a.mij{color:inherit;text-decoration:underline dotted;cursor:pointer}
 .leeg{background:var(--card);border-radius:6px;padding:20px;color:#555}
+table.piv td.r,table.piv th.r{min-width:90px}
+table.piv td.nul{color:#bbb;text-align:center}
+table.piv tr.tot td,table.piv td.tot{font-weight:700;background:var(--hl)}
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -113,7 +116,7 @@ a.mij{color:inherit;text-decoration:underline dotted;cursor:pointer}
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.6</span>
+  <span class="versie" title="Versie">v1.8</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="expBtn" hidden title="Alle gegevens downloaden als back-up">⬇ Back-up</button>
@@ -173,11 +176,12 @@ a.mij{color:inherit;text-decoration:underline dotted;cursor:pointer}
     <div class="tools">
       <input type="search" id="qZ" placeholder="Zoek object…">
       <select id="lZ"><option value="">Alle locaties</option></select>
+      <select id="aZ"><option value="">Alle afdelingen</option></select>
       <select id="sZ"><option value="">Alle soorten</option></select>
       <button class="btn add" data-add="bez">+ Toevoegen</button>
     </div>
-    <div class="kpis" id="kpisZ"></div>
-    <div class="card tw"><table id="tZ"></table></div>
+    <div class="card tw"><h2 id="pZt">Totaal per soort en afdeling</h2><table id="pZ" class="piv"></table></div>
+    <div class="card tw"><h2>Alle objecten</h2><table id="tZ"></table></div>
   </section>
 
   <section id="contact">
@@ -296,11 +300,16 @@ function drawPolis(id, sec, q, extra){
   if(sec==='bedrijf'){ $('fB').oninput = $('aB').oninput = () => drawPolis(id,sec,q,extra); }
 }
 
+const afdNaam = a => !a || a==='-' ? 'Algemeen' : a;
+const afdSort = (a,b) => { const n=v=>/^afd/i.test(v)?0:1; return n(a)-n(b) || a.localeCompare(b,'nl',{numeric:true}); };
 function drawZ(){
   const t=$('qZ').value.toLowerCase(), l=$('lZ').value, s=$('sZ').value;
-  const r = D.bez.filter(x=>(!t||[x.obj,x.opm,x.sub].join(' ').toLowerCase().includes(t))&&(!l||x.loc===l)&&(!s||x.sub===s));
+  // afdelingen-filter hangt af van gekozen locatie
+  fillSelect('aZ', [...new Set(D.bez.filter(x=>!l||x.loc===l).map(x=>afdNaam(x.afd)))].sort(afdSort));
+  const a=$('aZ').value;
+  const r = D.bez.filter(x=>(!t||[x.obj,x.opm,x.sub].join(' ').toLowerCase().includes(t))&&(!l||x.loc===l)&&(!a||afdNaam(x.afd)===a)&&(!s||x.sub===s));
+  drawPivot(r, l);
   const g = {}; r.forEach(x=>{const k=locName(x.loc||'?')+(x.afd&&x.afd!=='-'?' · '+x.afd:''); (g[k]=g[k]||[]).push(x);});
-  $('kpisZ').innerHTML = [['Objecten',r.length],['Totale waarde',eur0(sum(r,x=>x.waarde))]].map(([a,b])=>`<div class="kpi"><div class="l">${a}</div><div class="v">${b}</div></div>`).join('');
   const ex = EDIT?'<td></td>':'';
   let h='<thead><tr><th>Object</th><th>Soort</th><th class="r">Aantal</th><th>Eenheid</th><th class="r">Prijs</th><th class="r">Waarde</th><th>Opmerking</th>'+(EDIT?'<th></th>':'')+'</tr></thead><tbody>';
   for(const [k,items] of Object.entries(g).sort((a,b)=>a[0].localeCompare(b[0],'nl',{numeric:true}))){
@@ -309,7 +318,24 @@ function drawZ(){
   }
   $('tZ').innerHTML = h+`</tbody><tfoot><tr><td colspan="5">Totaal</td><td class="r">${eur0(sum(r,x=>x.waarde))}</td><td></td>${ex}</tr></tfoot>`;
 }
-['qZ','lZ','sZ'].forEach(i=>$(i).oninput=drawZ);
+['qZ','lZ','aZ','sZ'].forEach(i=>$(i).oninput=drawZ);
+$('lZ').addEventListener('input',()=>{ $('aZ').value=''; drawZ(); });
+function drawPivot(r, l){
+  // kolommen: per afdeling als er een locatie gekozen is, anders per locatie
+  const colOf = x => l ? afdNaam(x.afd) : locName(x.loc||'?');
+  const cols = [...new Set(r.map(colOf))].sort(l?afdSort:(a,b)=>a.localeCompare(b,'nl',{numeric:true}));
+  const rows = [...new Set(r.map(x=>x.sub||'Overig'))].sort((a,b)=>a.localeCompare(b,'nl'));
+  const v = {}; r.forEach(x=>{ const k=(x.sub||'Overig')+'|'+colOf(x); v[k]=(v[k]||0)+(x.waarde||0); });
+  const cel = n => n ? `<td class="r">${eur0(n)}</td>` : '<td class="nul">–</td>';
+  $('pZt').textContent = l ? `Totaal per soort en afdeling – ${locName(l)}` : 'Totaal per soort en locatie';
+  if(!r.length){ $('pZ').innerHTML='<tr><td class="muted">Niets gevonden.</td></tr>'; return; }
+  let h = '<thead><tr><th>Soort</th>'+cols.map(c=>`<th class="r">${esc(c)}</th>`).join('')+'<th class="r">Totaal</th></tr></thead><tbody>';
+  rows.forEach(rw=>{ const tot=cols.reduce((t,c)=>t+(v[rw+'|'+c]||0),0);
+    h += `<tr><td>${esc(rw)}</td>`+cols.map(c=>cel(v[rw+'|'+c])).join('')+`<td class="r tot">${eur0(tot)}</td></tr>`; });
+  const ct = c => rows.reduce((t,rw)=>t+(v[rw+'|'+c]||0),0);
+  h += '</tbody><tfoot><tr class="tot"><td>Totaal</td>'+cols.map(c=>`<td class="r">${eur0(ct(c))}</td>`).join('')+`<td class="r">${eur0(sum(r,x=>x.waarde))}</td></tr></tfoot>`;
+  $('pZ').innerHTML = h;
+}
 
 // ---------- contacten ----------
 const norm = v => String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');
