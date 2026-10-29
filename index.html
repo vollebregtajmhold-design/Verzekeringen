@@ -150,8 +150,6 @@ table.piv td.ptog .aantal{font-weight:400;color:#777}
 table.piv tr.pobj td{background:#faf8f3;font-size:13px}
 table.piv tr.pobj td:first-child{padding-left:34px;color:#333}
 table.piv tr.pobj td.tot{background:#eaf1fd}
-body.beheer #dlgInfo .eb{display:inline!important}
-body.beheer #dlgInfo .add{display:inline-block!important}
 #dlgInfo .knoppen{flex-wrap:wrap}
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
@@ -163,7 +161,7 @@ body.beheer #dlgInfo .add{display:inline-block!important}
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.20</span>
+  <span class="versie" title="Versie">v1.21</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="expBtn" hidden title="Alle gegevens downloaden als back-up">⬇ Back-up</button>
@@ -416,8 +414,9 @@ function renderInfo(){
   const groep = x => perObj ? objKey(x) : afdNaam(x.afd);
   const L = {}; items.forEach(x=>{ const l=x.loc||'?', g=groep(x); ((L[l]=L[l]||{})[g]=L[l][g]||[]).push(x); });
   const hoev = it => { const q={}; it.forEach(x=>{ if(x.aantal==null) return; const e=((x.eenh||'').trim()||'stuks').toLowerCase().replace(/^stuk$/,'stuks'); q[e]=(q[e]||0)+x.aantal; }); return Object.entries(q).map(([e,n])=>nf(n)+' '+e).join(' + '); };
-  let h = `<table class="info"><thead><tr><th>${perObj?'Object / afdeling':'Object'}</th>${veelSoort?'<th>Soort</th>':''}<th class="r">Aantal</th><th>Eenheid</th><th class="r">Prijs</th><th class="r">Waarde</th>${BEHEER?'<th></th>':''}</tr></thead><tbody>`;
-  const ex = BEHEER?'<td></td>':'';
+  let h = `<table class="info"><thead><tr><th>${perObj?'Object / afdeling':'Object'}</th>${veelSoort?'<th>Soort</th>':''}<th class="r">Aantal</th><th>Eenheid</th><th class="r">Prijs</th><th class="r">Waarde</th>${EDIT?'<th></th>':''}</tr></thead><tbody>`;
+  const ex = EDIT?'<td></td>':'';
+  $('infoAdd').hidden = !EDIT;
   for(const loc of Object.keys(L).sort((a,b)=>a.localeCompare(b,'nl',{numeric:true}))){
     const kL='L:'+loc, oL=O.has(kL), all=Object.values(L[loc]).flat();
     const nAfd = new Set(all.map(x=>afdNaam(x.afd))).size;
@@ -430,11 +429,11 @@ function renderInfo(){
         const naam = it[0].obj||'?';
         h += `<tr class="itog i2" data-k="${esc(kG)}"><td colspan="${veelSoort?2:1}"><span class="pijl">${oG?'▼':'▶'}</span>${esc(naam)}<span class="aantal">(${it.length} afdeling${it.length>1?'en':''})</span></td><td class="r" colspan="2">${hoev(it)}</td><td></td><td class="r">${eur0(sum(it,x=>x.waarde))}</td>${ex}</tr>`;
         if(!oG) continue;
-        it.sort((a,b)=>afdSort(afdNaam(a.afd),afdNaam(b.afd))).forEach(x=> h += `<tr class="i3"><td>${esc(afdNaam(x.afd))}${x.opm?` <span class="muted">– ${esc(x.opm)}</span>`:''}</td>${veelSoort?`<td class="muted">${esc(x.sub)}</td>`:''}<td class="r">${nf(x.aantal)}</td><td class="muted">${esc(x.eenh)}</td><td class="r">${eur(x.prijs)}</td><td class="r">${eur0(x.waarde)}</td>${BEHEER?`<td>${eb('bez',x.id)}</td>`:''}</tr>`);
+        it.sort((a,b)=>afdSort(afdNaam(a.afd),afdNaam(b.afd))).forEach(x=> h += `<tr class="i3"><td>${esc(afdNaam(x.afd))}${x.opm?` <span class="muted">– ${esc(x.opm)}</span>`:''}</td>${veelSoort?`<td class="muted">${esc(x.sub)}</td>`:''}<td class="r">${nf(x.aantal)}</td><td class="muted">${esc(x.eenh)}</td><td class="r">${eur(x.prijs)}</td><td class="r">${eur0(x.waarde)}</td>${EDIT?`<td>${eb('bez',x.id)}</td>`:''}</tr>`);
       } else {
         h += `<tr class="itog i2" data-k="${esc(kG)}"><td colspan="${nk-1}"><span class="pijl">${oG?'▼':'▶'}</span>${esc(g)}<span class="aantal">(${it.length})</span></td><td class="r">${eur0(sum(it,x=>x.waarde))}</td>${ex}</tr>`;
         if(!oG) continue;
-        it.sort((a,b)=>(b.waarde||0)-(a.waarde||0)).forEach(x=> h += `<tr class="i3 objklik" data-o="${esc(objKey(x))}" title="Klik: objecten bij elkaar zetten"><td>${esc(x.obj)}${x.opm?` <span class="muted">– ${esc(x.opm)}</span>`:''}</td>${veelSoort?`<td class="muted">${esc(x.sub)}</td>`:''}<td class="r">${nf(x.aantal)}</td><td class="muted">${esc(x.eenh)}</td><td class="r">${eur(x.prijs)}</td><td class="r">${eur0(x.waarde)}</td>${BEHEER?`<td>${eb('bez',x.id)}</td>`:''}</tr>`);
+        it.sort((a,b)=>(b.waarde||0)-(a.waarde||0)).forEach(x=> h += `<tr class="i3 objklik" data-o="${esc(objKey(x))}" title="Klik: objecten bij elkaar zetten"><td>${esc(x.obj)}${x.opm?` <span class="muted">– ${esc(x.opm)}</span>`:''}</td>${veelSoort?`<td class="muted">${esc(x.sub)}</td>`:''}<td class="r">${nf(x.aantal)}</td><td class="muted">${esc(x.eenh)}</td><td class="r">${eur(x.prijs)}</td><td class="r">${eur0(x.waarde)}</td>${EDIT?`<td>${eb('bez',x.id)}</td>`:''}</tr>`);
       }
     }
   }
@@ -470,7 +469,7 @@ function drawPivot(r, l){
     for(const k of [s+'§'+o+'|'+c, s+'§'+o+'|*']){ v[k]=(v[k]||0)+(x.waarde||0); addQ(k,x); } });
   const qTxt = k => q[k] ? Object.entries(q[k]).map(([e,n])=>`${nf(n)} ${esc(e)}`).join(' + ') : '';
   PIV = { r, colOf, l };
-  const cel = (k,ps,po,c,cls='') => v[k] ? `<td class="r klik ${cls}" data-ps="${esc(ps)}" data-po="${esc(po)}" data-pc="${esc(c)}">${eur0(v[k])}${po&&q[k]?`<div class="hoev">${qTxt(k)}</div>`:''}</td>` : '<td class="nul">–</td>';
+  const cel = (k,ps,po,c,cls='') => v[k] ? `<td class="r klik ${cls}" data-ps="${esc(ps)}" data-po="${esc(po)}" data-pc="${esc(c)}">${eur0(v[k])}</td>` : '<td class="nul">–</td>';
   $('pZt').textContent = l ? `Totaal per soort en afdeling – ${locName(l)}` : 'Totaal per soort en locatie';
   if(!r.length){ $('pZ').innerHTML='<tr><td class="muted">Niets gevonden.</td></tr>'; return; }
   let h = '<thead><tr><th>Soort / object</th>'+cols.map(c=>`<th class="r">${esc(c)}</th>`).join('')+'<th class="r">Totaal</th></tr></thead><tbody>';
@@ -619,7 +618,7 @@ onAuthStateChanged(auth, async user => {
   USER = user; $('fout').textContent = '';
   if (!user) { $('login').hidden=false; $('app').hidden=true; $('user').hidden=true; $('in').hidden=false; return; }
   const beheer = beheerders.includes(user.email.toLowerCase());
-  BEHEER = beheer; document.body.classList.toggle('beheer', beheer); $('infoAdd').hidden = !beheer;
+  BEHEER = beheer; document.body.classList.toggle('beheer', beheer);
   $('user').hidden=false; $('uit').title='Ingelogd als '+user.email;
   ['editBtn','expBtn','upBtn'].forEach(i=>$(i).hidden=!beheer);
   try {
