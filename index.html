@@ -119,6 +119,13 @@ tr.tog .aantal{font-weight:400;color:#555;margin-left:6px}
 #tZ tr.lvl2:hover td{background:#c4c4c4}
 #tZ tr.lvl2 td:first-child{padding-left:30px}
 #tZ tr.lvl3 td:first-child{padding-left:50px}
+table.piv td.klik{cursor:pointer}
+table.piv td.klik:hover{background:var(--blue)!important;color:#fff}
+dialog.breed{width:min(820px,96vw);max-height:88vh}
+#infoInhoud{max-height:62vh;overflow:auto}
+table.info{font-size:14px}
+table.info tr.grp td{background:#d3d3d3}
+table.info .aantal{font-weight:400;color:#555}
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -129,7 +136,7 @@ tr.tog .aantal{font-weight:400;color:#555;margin-left:6px}
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.10</span>
+  <span class="versie" title="Versie">v1.11</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="expBtn" hidden title="Alle gegevens downloaden als back-up">⬇ Back-up</button>
@@ -216,6 +223,7 @@ tr.tog .aantal{font-weight:400;color:#555;margin-left:6px}
 </div>
 <dialog id="dlg"><form id="frm" method="dialog"><h2 id="dlgTitel"></h2><div id="velden"></div>
 <div class="knoppen"><button class="btn" value="annuleer" formnovalidate>Annuleren</button><button class="btn blue" id="opslaan" value="ok">Opslaan</button></div></form></dialog>
+<dialog id="dlgInfo" class="breed"><form method="dialog"><h2 id="infoTitel"></h2><div id="infoInhoud" class="tw"></div><div class="knoppen"><button class="btn blue">Sluiten</button></div></form></dialog>
 <div id="toast" hidden></div>
 
 <script type="module">
@@ -350,20 +358,36 @@ function drawZ(){
 }
 ['qZ','lZ','aZ','sZ'].forEach(i=>$(i).oninput=drawZ);
 $('lZ').addEventListener('input',()=>{ $('aZ').value=''; drawZ(); });
+let PIV = null;
+$('pZ').addEventListener('click', e=>{
+  const c = e.target.closest('td.klik'); if(!c || !PIV) return;
+  const ps=c.dataset.ps, pc=c.dataset.pc, { r, colOf, l } = PIV;
+  const items = r.filter(x=>(ps==='*'||(x.sub||'Overig')===ps) && (pc==='*'||colOf(x)===pc));
+  const waar = [ps==='*'?'Alle soorten':ps, pc==='*'?(l?locName(l):'alle locaties'):(l?locName(l)+' · '+pc:pc)].join(' – ');
+  const G = {}; items.forEach(x=>{ const k=locName(x.loc||'?')+' · '+afdNaam(x.afd); (G[k]=G[k]||[]).push(x); });
+  let h = `<table class="info"><thead><tr><th>Object</th><th>Soort</th><th class="r">Aantal</th><th class="r">Waarde</th></tr></thead><tbody>`;
+  Object.keys(G).sort((a,b)=>a.localeCompare(b,'nl',{numeric:true})).forEach(k=>{
+    h += `<tr class="grp"><td colspan="3">${esc(k)} <span class="aantal">(${G[k].length})</span></td><td class="r">${eur0(sum(G[k],x=>x.waarde))}</td></tr>`;
+    G[k].sort((a,b)=>(b.waarde||0)-(a.waarde||0)).forEach(x=> h += `<tr><td>${esc(x.obj)}${x.opm?` <span class="muted">– ${esc(x.opm)}</span>`:''}</td><td class="muted">${esc(x.sub)}</td><td class="r">${nf(x.aantal)} ${esc(x.eenh)}</td><td class="r">${eur0(x.waarde)}</td></tr>`);
+  });
+  h += `</tbody><tfoot><tr><td colspan="3">Totaal (${items.length} objecten)</td><td class="r">${eur0(sum(items,x=>x.waarde))}</td></tr></tfoot></table>`;
+  $('infoTitel').textContent = waar; $('infoInhoud').innerHTML = h; $('dlgInfo').showModal();
+});
 function drawPivot(r, l){
   // kolommen: per afdeling als er een locatie gekozen is, anders per locatie
   const colOf = x => l ? afdNaam(x.afd) : locName(x.loc||'?');
   const cols = [...new Set(r.map(colOf))].sort(l?afdSort:(a,b)=>a.localeCompare(b,'nl',{numeric:true}));
   const rows = [...new Set(r.map(x=>x.sub||'Overig'))].sort((a,b)=>a.localeCompare(b,'nl'));
   const v = {}; r.forEach(x=>{ const k=(x.sub||'Overig')+'|'+colOf(x); v[k]=(v[k]||0)+(x.waarde||0); });
-  const cel = n => n ? `<td class="r">${eur0(n)}</td>` : '<td class="nul">–</td>';
+  PIV = { r, colOf, l };
+  const cel = (n,rw,c) => n ? `<td class="r klik" data-ps="${esc(rw)}" data-pc="${esc(c)}">${eur0(n)}</td>` : '<td class="nul">–</td>';
   $('pZt').textContent = l ? `Totaal per soort en afdeling – ${locName(l)}` : 'Totaal per soort en locatie';
   if(!r.length){ $('pZ').innerHTML='<tr><td class="muted">Niets gevonden.</td></tr>'; return; }
   let h = '<thead><tr><th>Soort</th>'+cols.map(c=>`<th class="r">${esc(c)}</th>`).join('')+'<th class="r">Totaal</th></tr></thead><tbody>';
   rows.forEach(rw=>{ const tot=cols.reduce((t,c)=>t+(v[rw+'|'+c]||0),0);
-    h += `<tr><td>${esc(rw)}</td>`+cols.map(c=>cel(v[rw+'|'+c])).join('')+`<td class="r tot">${eur0(tot)}</td></tr>`; });
+    h += `<tr><td>${esc(rw)}</td>`+cols.map(c=>cel(v[rw+'|'+c],rw,c)).join('')+`<td class="r tot klik" data-ps="${esc(rw)}" data-pc="*">${eur0(tot)}</td></tr>`; });
   const ct = c => rows.reduce((t,rw)=>t+(v[rw+'|'+c]||0),0);
-  h += '</tbody><tfoot><tr class="tot"><td>Totaal</td>'+cols.map(c=>`<td class="r">${eur0(ct(c))}</td>`).join('')+`<td class="r">${eur0(sum(r,x=>x.waarde))}</td></tr></tfoot>`;
+  h += '</tbody><tfoot><tr class="tot"><td>Totaal</td>'+cols.map(c=>`<td class="r klik" data-ps="*" data-pc="${esc(c)}">${eur0(ct(c))}</td>`).join('')+`<td class="r klik" data-ps="*" data-pc="*">${eur0(sum(r,x=>x.waarde))}</td></tr></tfoot>`;
   $('pZ').innerHTML = h;
 }
 
