@@ -161,7 +161,7 @@ table.piv tr.pobj td.tot{background:#eaf1fd}
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.22</span>
+  <span class="versie" title="Versie">v1.23</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="expBtn" hidden title="Alle gegevens downloaden als back-up">⬇ Back-up</button>
@@ -225,7 +225,7 @@ table.piv tr.pobj td.tot{background:#eaf1fd}
       <select id="sZ"><option value="">Alle soorten</option></select>
       <button class="btn add" data-add="bez">+ Toevoegen</button>
     </div>
-    <div class="card tw"><h2><span id="pZt">Totaal per soort en afdeling</span> <span style="float:right"><button type="button" class="btn klein" id="pivOpen">▼ Alles open</button> <button type="button" class="btn klein" id="pivDicht">▶ Alles dicht</button></span></h2><table id="pZ" class="piv"></table></div>
+    <div class="card tw"><h2><span id="pZt">Totaal per soort en afdeling</span> <span style="float:right"><span id="pivMode" class="schakel" style="float:none;margin-right:8px"><button type="button" data-m="waarde">Waarde</button><button type="button" data-m="prijs">Stuksprijs</button></span><button type="button" class="btn klein" id="pivOpen">▼ Alles open</button> <button type="button" class="btn klein" id="pivDicht">▶ Alles dicht</button></span></h2><table id="pZ" class="piv"></table></div>
     <div class="card tw" hidden><h2>Alle objecten <span style="float:right"><button class="btn klein" id="zOpen">▼ Alles open</button> <button class="btn klein" id="zDicht">▶ Alles dicht</button></span></h2><table id="tZ"></table></div>
   </section>
 
@@ -455,6 +455,7 @@ $('infoAdd').onclick = () => openForm('bez', null, {...INFO.preset});
 const objKey = x => String(x.obj||'?').trim().toLowerCase();
 const objNaam = k => k.charAt(0).toUpperCase()+k.slice(1);
 const PIVOPEN = new Set();
+let PIVMODE = 'waarde'; try{ PIVMODE = localStorage.getItem('pivmode')||'waarde'; }catch(e){}
 function drawPivot(r, l){
   // rijen: soort (klik = objecten eronder), kolommen: afdeling bij gekozen locatie, anders locatie
   const zoek = !!$('qZ').value;
@@ -462,15 +463,18 @@ function drawPivot(r, l){
   const sOf = x => x.sub||'Overig';
   const cols = [...new Set(r.map(colOf))].sort(l?afdSort:(a,b)=>a.localeCompare(b,'nl',{numeric:true}));
   const rows = [...new Set(r.map(sOf))].sort((a,b)=>a.localeCompare(b,'nl'));
-  const v = {}, q = {};
+  const v = {}, q = {}, pr = {};
+  const prijsMode = PIVMODE==='prijs';
+  document.querySelectorAll('#pivMode button').forEach(b=>b.classList.toggle('on', b.dataset.m===PIVMODE));
   const addQ = (k,x) => { if(x.aantal==null) return; const e=((x.eenh||'').trim()||'stuks').toLowerCase().replace(/^stuk$/,'stuks'); (q[k]=q[k]||{}); q[k][e]=(q[k][e]||0)+x.aantal; };
   r.forEach(x=>{ const s=sOf(x), o=objKey(x), c=colOf(x);
     for(const k of [s+'|'+c, s+'|*']) v[k]=(v[k]||0)+(x.waarde||0);
-    for(const k of [s+'§'+o+'|'+c, s+'§'+o+'|*']){ v[k]=(v[k]||0)+(x.waarde||0); addQ(k,x); } });
+    for(const k of [s+'§'+o+'|'+c, s+'§'+o+'|*']){ v[k]=(v[k]||0)+(x.waarde||0); addQ(k,x); if(x.prijs!=null) (pr[k]=pr[k]||new Set()).add(x.prijs); } });
+  const prTxt = k => { const p=[...(pr[k]||[])].sort((a,b)=>a-b); return !p.length ? '–' : p.length===1 ? eur(p[0]) : `${eur(p[0])} – ${eur(p[p.length-1])}`; };
   const qTxt = k => q[k] ? Object.entries(q[k]).map(([e,n])=>`${nf(n)} ${esc(e)}`).join(' + ') : '';
   PIV = { r, colOf, l };
-  const cel = (k,ps,po,c,cls='') => v[k] ? `<td class="r klik ${cls}" data-ps="${esc(ps)}" data-po="${esc(po)}" data-pc="${esc(c)}">${eur0(v[k])}</td>` : '<td class="nul">–</td>';
-  $('pZt').textContent = l ? `Totaal per soort en afdeling – ${locName(l)}` : 'Totaal per soort en locatie';
+  const cel = (k,ps,po,c,cls='') => v[k] ? `<td class="r klik ${cls}" data-ps="${esc(ps)}" data-po="${esc(po)}" data-pc="${esc(c)}">${prijsMode ? (po ? prTxt(k) : '') : eur0(v[k])}</td>` : '<td class="nul">–</td>';
+  $('pZt').textContent = (prijsMode ? 'Stuksprijs' : 'Totaal') + (l ? ` per soort en afdeling – ${locName(l)}` : ' per soort en locatie');
   if(!r.length){ $('pZ').innerHTML='<tr><td class="muted">Niets gevonden.</td></tr>'; return; }
   let h = '<thead><tr><th>Soort / object</th>'+cols.map(c=>`<th class="r">${esc(c)}</th>`).join('')+'<th class="r">Totaal</th></tr></thead><tbody>';
   rows.forEach(s=>{
@@ -483,12 +487,13 @@ function drawPivot(r, l){
     });
   });
   const ct = c => rows.reduce((t,s)=>t+(v[s+'|'+c]||0),0);
-  h += '</tbody><tfoot><tr class="tot"><td>Totaal</td>'+cols.map(c=>`<td class="r klik" data-ps="*" data-po="" data-pc="${esc(c)}">${eur0(ct(c))}</td>`).join('')+`<td class="r klik" data-ps="*" data-po="" data-pc="*">${eur0(sum(r,x=>x.waarde))}</td></tr></tfoot>`;
+  h += prijsMode ? '</tbody>' : '</tbody><tfoot><tr class="tot"><td>Totaal</td>'+cols.map(c=>`<td class="r klik" data-ps="*" data-po="" data-pc="${esc(c)}">${eur0(ct(c))}</td>`).join('')+`<td class="r klik" data-ps="*" data-po="" data-pc="*">${eur0(sum(r,x=>x.waarde))}</td></tr></tfoot>`;
   $('pZ').innerHTML = h;
 }
 $('pZ').addEventListener('click', e=>{ const t=e.target.closest('td.ptog'); if(!t) return; const s=t.dataset.s; PIVOPEN.has(s)?PIVOPEN.delete(s):PIVOPEN.add(s); drawZ(); });
 $('pivOpen').onclick = () => { D.bez.forEach(x=>PIVOPEN.add(x.sub||'Overig')); drawZ(); };
 $('pivDicht').onclick = () => { PIVOPEN.clear(); drawZ(); };
+document.querySelectorAll('#pivMode button').forEach(b=>b.onclick=()=>{ PIVMODE=b.dataset.m; try{localStorage.setItem('pivmode',PIVMODE)}catch(e){} if(PIVMODE==='prijs' && !PIVOPEN.size) D.bez.forEach(x=>PIVOPEN.add(x.sub||'Overig')); drawZ(); });
 
 // ---------- contacten ----------
 const norm = v => String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');
