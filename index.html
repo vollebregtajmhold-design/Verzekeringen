@@ -113,6 +113,12 @@ tr.tog .aantal{font-weight:400;color:#555;margin-left:6px}
 .btn.klein{font-size:12px;padding:3px 10px;text-transform:none;letter-spacing:0}
 #tZ{table-layout:fixed}
 #tZ td{overflow-wrap:anywhere}
+#tZ tr.lvl1 td{background:#a3a3a3;font-size:15px}
+#tZ tr.lvl1:hover td{background:#959595}
+#tZ tr.lvl2 td{background:#d3d3d3}
+#tZ tr.lvl2:hover td{background:#c4c4c4}
+#tZ tr.lvl2 td:first-child{padding-left:30px}
+#tZ tr.lvl3 td:first-child{padding-left:50px}
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -123,7 +129,7 @@ tr.tog .aantal{font-weight:400;color:#555;margin-left:6px}
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.9</span>
+  <span class="versie" title="Versie">v1.10</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="expBtn" hidden title="Alle gegevens downloaden als back-up">⬇ Back-up</button>
@@ -312,7 +318,7 @@ $('tZ').addEventListener('click', e=>{
   const g = e.target.closest('tr.tog'); if(!g || e.target.closest('button,a')) return;
   const k = g.dataset.g; ZOPEN.has(k) ? ZOPEN.delete(k) : ZOPEN.add(k); drawZ();
 });
-$('zOpen').onclick = () => { document.querySelectorAll('#tZ tr.tog').forEach(r=>ZOPEN.add(r.dataset.g)); drawZ(); };
+$('zOpen').onclick = () => { D.bez.forEach(x=>{ ZOPEN.add('L:'+(x.loc||'?')); ZOPEN.add('A:'+(x.loc||'?')+'|'+afdNaam(x.afd)); }); drawZ(); };
 $('zDicht').onclick = () => { ZOPEN.clear(); drawZ(); };
 const afdNaam = a => !a || a==='-' ? 'Algemeen' : a;
 const afdSort = (a,b) => { const n=v=>/^afd/i.test(v)?0:1; return n(a)-n(b) || a.localeCompare(b,'nl',{numeric:true}); };
@@ -323,13 +329,22 @@ function drawZ(){
   const a=$('aZ').value;
   const r = D.bez.filter(x=>(!t||[x.obj,x.opm,x.sub].join(' ').toLowerCase().includes(t))&&(!l||x.loc===l)&&(!a||afdNaam(x.afd)===a)&&(!s||x.sub===s));
   drawPivot(r, l);
-  const g = {}; r.forEach(x=>{const k=locName(x.loc||'?')+(x.afd&&x.afd!=='-'?' · '+x.afd:''); (g[k]=g[k]||[]).push(x);});
   const ex = EDIT?'<td></td>':'';
   let h='<colgroup><col style="width:24%"><col style="width:15%"><col style="width:8%"><col style="width:8%"><col style="width:10%"><col style="width:11%"><col>'+(EDIT?'<col style="width:80px">':'')+'</colgroup><thead><tr><th>Object</th><th>Soort</th><th class="r">Aantal</th><th>Eenheid</th><th class="r">Prijs</th><th class="r">Waarde</th><th>Opmerking</th>'+(EDIT?'<th></th>':'')+'</tr></thead><tbody>';
-  for(const [k,items] of Object.entries(g).sort((a,b)=>a[0].localeCompare(b[0],'nl',{numeric:true}))){
-    const open = ZOPEN.has(k) || !!t;
-    h+=`<tr class="grp tog" data-g="${esc(k)}"><td colspan="5"><span class="pijl">${open?'▼':'▶'}</span>${esc(k)}<span class="aantal">(${items.length})</span></td><td class="r">${eur0(sum(items,x=>x.waarde))}</td><td></td>${ex}</tr>`;
-    items.sort((a,b)=>String(a.obj).localeCompare(String(b.obj),'nl')).forEach(x=>h+=`<tr${open?'':' hidden'}><td>${esc(x.obj)}${lk(x.link)}</td><td class="muted">${esc(x.sub)}</td><td class="r">${nf(x.aantal)}</td><td class="muted">${esc(x.eenh)}</td><td class="r">${eur(x.prijs)}</td><td class="r">${eur0(x.waarde)}</td><td class="muted">${esc(x.opm)}</td>${EDIT?`<td>${eb('bez',x.id)}</td>`:''}</tr>`);
+  // laag 1: locatie, laag 2: afdeling, laag 3: objecten
+  const L = {}; r.forEach(x=>{ const l=x.loc||'?', a=afdNaam(x.afd); ((L[l]=L[l]||{})[a]=L[l][a]||[]).push(x); });
+  const zoek = !!t;
+  for(const loc of Object.keys(L).sort((a,b)=>a.localeCompare(b,'nl',{numeric:true}))){
+    const kL='L:'+loc, openL = ZOPEN.has(kL) || zoek || !!$('lZ').value;
+    const allL = Object.values(L[loc]).flat(), afds = Object.keys(L[loc]).sort(afdSort);
+    const enkel = afds.length===1 && afds[0]==='Algemeen';
+    h+=`<tr class="grp tog lvl1" data-g="${esc(kL)}"><td colspan="5"><span class="pijl">${openL?'▼':'▶'}</span>${esc(locName(loc))}<span class="aantal">(${enkel?allL.length+' objecten':afds.length+' afdelingen'})</span></td><td class="r">${eur0(sum(allL,x=>x.waarde))}</td><td></td>${ex}</tr>`;
+    for(const afd of afds){
+      const items = L[loc][afd], kA='A:'+loc+'|'+afd;
+      const openA = openL && (enkel || ZOPEN.has(kA) || zoek || !!$('aZ').value);
+      if(!enkel) h+=`<tr class="grp tog lvl2" data-g="${esc(kA)}"${openL?'':' hidden'}><td colspan="5"><span class="pijl">${openA?'▼':'▶'}</span>${esc(afd)}<span class="aantal">(${items.length})</span></td><td class="r">${eur0(sum(items,x=>x.waarde))}</td><td></td>${ex}</tr>`;
+      items.sort((a,b)=>String(a.obj).localeCompare(String(b.obj),'nl')).forEach(x=>h+=`<tr class="lvl3"${openA?'':' hidden'}><td>${esc(x.obj)}${lk(x.link)}</td><td class="muted">${esc(x.sub)}</td><td class="r">${nf(x.aantal)}</td><td class="muted">${esc(x.eenh)}</td><td class="r">${eur(x.prijs)}</td><td class="r">${eur0(x.waarde)}</td><td class="muted">${esc(x.opm)}</td>${EDIT?`<td>${eb('bez',x.id)}</td>`:''}</tr>`);
+    }
   }
   $('tZ').innerHTML = h+`</tbody><tfoot><tr><td colspan="5">Totaal</td><td class="r">${eur0(sum(r,x=>x.waarde))}</td><td></td>${ex}</tr></tfoot>`;
 }
