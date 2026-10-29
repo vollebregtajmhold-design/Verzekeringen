@@ -9,7 +9,7 @@
   --top:#5a2d82; --topline:#7d55a3; --bar:#f3ede2; --bg:#6b737a;
   --card:#f4efe6; --ink:#1a1a1a; --muted:#555; --line:#a9a9a9; --head:#b9b9b9;
   --mint:#d4e8dc; --blue:#1f5fc4; --green:#2e6b47; --lime:#6aae3d; --pink:#e5007e;
-  --hl:#fff6c4; --red:#d62828; --redsoft:#fde3e3;
+  --hl:#dbeafe; --red:#d62828; --redsoft:#fde3e3;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Arial,"Helvetica Neue",Helvetica,sans-serif;-webkit-font-smoothing:antialiased}
@@ -145,7 +145,7 @@ table.info .aantal{font-weight:400;color:#555}
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.13</span>
+  <span class="versie" title="Versie">v1.15</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="expBtn" hidden title="Alle gegevens downloaden als back-up">⬇ Back-up</button>
@@ -173,7 +173,7 @@ table.info .aantal{font-weight:400;color:#555}
   <button data-t="home" class="on">Overzicht</button>
   <button data-t="bedrijf">Zakelijk</button>
   <button data-t="prive">Privé</button>
-  <button data-t="bez">Bezittingen</button>
+  <button data-t="bez">Kassen</button>
   <button data-t="tijd">Aandachtspunten</button>
   <button data-t="contact">Contacten</button>
 </div></nav>
@@ -289,7 +289,7 @@ function render(){
   $('kpis').innerHTML = [
     ['Premie zakelijk / jaar', eur0(sum(D.bedrijf,x=>x.premie))],
     ['Premie privé / jaar', eur0(sum(D.prive,x=>x.premie))],
-    ['Verzekerde waarde bezittingen', eur0(sum(D.bez,x=>x.waarde))],
+    ['Verzekerde waarde kassen', eur0(sum(D.bez,x=>x.waarde))],
     ['Actie nodig', alle.filter(x=>x.actie==='ja').length + ' polissen'],
   ].map(([l,v])=>`<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div></div>`).join('');
 
@@ -381,6 +381,11 @@ $('pZ').addEventListener('click', e=>{
   $('dlgInfo').showModal();
 });
 let INFO = null;
+// rechtermuisknop werkt ook
+$('pZ').addEventListener('contextmenu', e=>{ const c=e.target.closest('td.klik'); if(!c) return; e.preventDefault(); c.dispatchEvent(new MouseEvent('click',{bubbles:true})); });
+// klik (links of rechts) buiten de pop-up sluit hem
+const buiten = (dlg,e) => { const r=dlg.getBoundingClientRect(); return e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom; };
+['click','contextmenu'].forEach(t=>$('dlgInfo').addEventListener(t, e=>{ if(buiten($('dlgInfo'),e)){ e.preventDefault(); $('dlgInfo').close(); } }));
 function renderInfo(){
   const items = INFO.items, O = INFO.open;
   const veelSoort = new Set(items.map(x=>x.sub)).size>1, nk = veelSoort?4:3;
@@ -470,12 +475,12 @@ const FIELDS = {
   contacten: [['naam','Naam (persoon of bedrijf)','text',1],['org','Maatschappij / bedrijf','list'],['rol','Rol (bijv. adviseur, schade melden)','list'],['tel','Telefoon'],['mob','Mobiel'],['email','E-mail','email'],['web','Website'],['login','Link klantportaal (inloggen)'],['adres','Adres'],['klantnr','Klantnummer / relatienummer'],['opm','Opmerking','area']],
   tijd: [['datum','Datum','date',1],['wie','Aanwezig'],['punten','Punten – één per regel. Extra info na een | (bijv: Olietanken opzeggen | KJ vraagt na)','area']],
 };
-const NAMEN = { bedrijf:'zakelijke polis', prive:'privé polis', bez:'bezitting', priveNotes:'notitie', extra:'link', tijd:'overleg', contacten:'contact' };
+const NAMEN = { bedrijf:'zakelijke polis', prive:'privé polis', bez:'object (kassen)', priveNotes:'notitie', extra:'link', tijd:'overleg', contacten:'contact' };
 
 function openForm(sec, id){
   const item = id ? D[sec].find(x=>x.id===id) : (sec==='prive'?{cat:'Privé'}:{});
   if(!item) return;
-  $('dlgTitel').textContent = (id?'Wijzig ':'Nieuwe ') + NAMEN[sec];
+  $('dlgTitel').textContent = (id?'Wijzig ':(sec==='bez'||sec==='contacten'?'Nieuw ':'Nieuwe ')) + NAMEN[sec];
   $('velden').innerHTML = FIELDS[sec].map(([k,l,t='text',req])=>{
     let v = item[k];
     if(k==='punten') v = (v||[]).map(p=>p.extra?`${p.tekst} | ${p.extra}`:p.tekst).join('\n');
