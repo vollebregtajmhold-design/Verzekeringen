@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verzekeringen overzicht</title>
+<style>
+:root{
+  --top:#5a2d82; --topline:#7d55a3; --bar:#f3ede2; --bg:#6b737a;
+  --card:#f4efe6; --ink:#1a1a1a; --muted:#555; --line:#a9a9a9; --head:#b9b9b9;
+  --mint:#d4e8dc; --blue:#1f5fc4; --green:#2e6b47; --lime:#6aae3d; --pink:#e5007e;
+  --hl:#fff6c4; --red:#d62828; --redsoft:#fde3e3;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 "Segoe UI",system-ui,-apple-system,Roboto,sans-serif}
+header{background:var(--top);padding:10px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+header .dot{width:16px;height:16px;border-radius:50%;background:var(--pink);border:2px solid #fff}
+h1{margin:0;font-size:20px;color:#fff;font-weight:800}
+.sub{color:#e8ecef;font-size:12px;font-weight:600;text-align:center;margin-top:10px}
+.user{margin-left:auto}
+#user[hidden]+#fsBtn,.versie+#fsBtn{margin-left:auto}
+nav{position:sticky;top:0;z-index:5;background:var(--top);border-top:1px solid var(--topline);box-shadow:0 2px 6px rgba(0,0,0,.25)}
+nav .in{max-width:1200px;margin:0 auto;padding:8px 16px;display:flex;gap:8px;overflow-x:auto}
+nav button{font:inherit;font-weight:800;font-size:16px;padding:8px 22px;cursor:pointer;white-space:nowrap;
+  background:var(--mint);color:var(--ink);border:2px solid #fff;border-radius:8px}
+nav button:hover{filter:brightness(.96)}
+nav button.on{background:var(--blue);color:#fff}
+main{max-width:1200px;margin:0 auto;padding:20px 16px 60px}
+section{display:none} section.on{display:block}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:var(--card);border-top:5px solid var(--blue);border-bottom:5px solid var(--pink);border-left:4px solid var(--lime);border-radius:4px;padding:14px 16px;box-shadow:0 6px 14px rgba(0,0,0,.3)}
+.kpi .l{color:var(--muted);font-size:13px;font-weight:700}
+.kpi .v{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:2px}
+.card{background:var(--card);border-top:5px solid var(--blue);border-bottom:5px solid var(--pink);border-left:4px solid var(--lime);border-right:4px solid var(--lime);border-radius:4px;padding:16px;margin-bottom:18px;box-shadow:0 8px 18px rgba(0,0,0,.35)}
+.card h2{font-size:17px;margin:0 0 12px;font-weight:800;color:var(--green);text-transform:uppercase;letter-spacing:.06em}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;background:var(--bar);padding:10px;border-radius:4px}
+input[type=search],select{font:inherit;padding:6px 10px;border:1px solid #999;border-radius:6px;background:#fff;color:var(--ink)}
+select{background:var(--green);color:#fff;font-weight:700;border:1px solid #1d4a30}
+input[type=search]{flex:1;min-width:180px}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:8px 10px;border:1px solid var(--line);vertical-align:top}
+td{font-weight:600}
+th{background:var(--head);color:var(--ink);font-weight:800;font-size:15px;cursor:pointer;user-select:none;white-space:nowrap}
+th.r,td.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tbody tr:hover td{background:var(--hl)}
+tr.grp td{background:var(--head);font-weight:800;color:var(--ink)}
+tfoot td{font-weight:800;background:var(--hl)}
+.tag{display:inline-block;padding:1px 9px;border-radius:99px;font-size:12px;font-weight:800}
+.ja{background:#dcefe3;color:var(--green)}
+.nee{background:#e6e6e6;color:#555}
+.act{border:2px solid var(--red);color:var(--red);background:#fff}
+.muted{color:var(--muted);font-weight:500}
+.bars .row{display:grid;grid-template-columns:150px 1fr 110px;gap:10px;align-items:center;margin:6px 0;font-size:14px;font-weight:700}
+.bars .bar{height:16px;background:var(--green);border-radius:3px}
+.tl{border-left:4px solid var(--lime);padding-left:16px;margin-left:6px}
+.tl .d{font-weight:800;margin-top:6px;display:inline-block;background:var(--hl);padding:2px 8px;border-radius:4px}
+.tl ul{margin:6px 0 18px;padding-left:18px}
+.tl li{margin:4px 0;font-weight:600}
+.note{font-size:13px;color:var(--muted)}
+a.doc{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1px 9px;border-radius:6px;font-size:12px;font-weight:700;color:#fff;background:var(--blue);text-decoration:none;white-space:nowrap}
+a.doc:hover{filter:brightness(1.15)}
+.links li{margin:6px 0;font-weight:600}
+@media (max-width:600px){ .bars .row{grid-template-columns:100px 1fr 90px} nav button{font-size:14px;padding:7px 14px} }
+@media print{ nav,.tools{display:none} section{display:block!important;page-break-after:always} body{background:#fff} }
+#login{max-width:440px;margin:80px auto;text-align:center}
+#login p{font-weight:600}
+.btn{font:inherit;font-weight:800;font-size:16px;padding:10px 22px;cursor:pointer;background:var(--mint);color:var(--ink);border:2px solid #fff;border-radius:8px}
+.btn.blue{background:var(--blue);color:#fff}
+.user{display:flex;gap:8px;align-items:center;color:#fff;font-size:13px;font-weight:600}
+.user .btn{font-size:13px;padding:4px 12px}
+.msg{color:var(--red);font-weight:700}
+[hidden]{display:none!important}
+.versie{background:var(--pink);color:#fff;font-size:12px;font-weight:800;padding:2px 9px;border-radius:99px}
+.fs{font:inherit;font-weight:800;font-size:13px;padding:4px 12px;cursor:pointer;background:var(--mint);color:var(--ink);border:2px solid #fff;border-radius:8px}
+.add{font-size:13px;padding:5px 12px;background:var(--green);color:#fff}
+body:not(.edit) .add, body:not(.edit) .eb{display:none!important}
+.eb{white-space:nowrap}
+.eb button{font-size:14px;cursor:pointer;background:#fff;border:1px solid #999;border-radius:6px;padding:1px 6px;margin-right:3px}
+.eb button:hover{background:var(--hl)}
+body.edit #editBtn{background:var(--pink);color:#fff}
+.card h2 .add{float:right;text-transform:none;letter-spacing:0}
+dialog{border:0;border-top:5px solid var(--blue);border-bottom:5px solid var(--pink);border-radius:6px;padding:20px;background:var(--card);width:min(560px,94vw);box-shadow:0 10px 40px rgba(0,0,0,.5)}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+dialog h2{margin:0 0 12px;color:var(--green);font-weight:800}
+dialog label{display:block;font-weight:700;font-size:13px;margin:8px 0 3px}
+dialog input,dialog select,dialog textarea{width:100%;font:inherit;padding:7px 9px;border:1px solid #999;border-radius:6px;background:#fff;color:var(--ink)}
+dialog select{background:#fff;color:var(--ink);font-weight:600}
+dialog textarea{min-height:140px}
+dialog .knoppen{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+dialog .btn{font-size:14px;padding:7px 16px}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;font-weight:700;padding:10px 18px;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.4);z-index:50}
+</style>
+</head>
+<body>
+<header>
+  <span class="dot"></span>
+  <h1>Verzekeringen overzicht</h1>
+  <span class="versie" title="Versie">v1.2</span>
+  <div class="user" id="user" hidden>
+    <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
+    <button class="btn" id="expBtn" hidden title="Alle gegevens downloaden als back-up">⬇ Back-up</button>
+    <label class="btn" id="upBtn" hidden title="Alle gegevens vervangen door een bestand">⬆ Importeren<input type="file" id="upFile" accept=".json" hidden></label>
+    <button class="btn" id="uit">Uitloggen</button>
+  </div>
+  <button class="fs" id="fsBtn" title="Volledig scherm aan/uit">⛶ Volledig scherm</button>
+</header>
+<script>
+(function(){
+  const b=document.getElementById('fsBtn');
+  const zet=()=>{b.textContent=document.fullscreenElement?'✕ Terug':'⛶ Volledig scherm'};
+  b.onclick=()=>{ if(document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(()=>{}); };
+  document.addEventListener('fullscreenchange',zet);
+  if(!document.documentElement.requestFullscreen) b.hidden=true;
+})();
+</script>
+<div id="login" class="card">
+  <h2>Inloggen</h2>
+  <p id="loginTekst">Log in met je Google-account om het overzicht te zien.</p>
+  <button class="btn blue" id="in">Inloggen met Google</button>
+  <p class="msg" id="fout"></p>
+</div>
+<div id="app" hidden>
+<nav><div class="in">
+  <button data-t="home" class="on">Overzicht</button>
+  <button data-t="bedrijf">Zakelijk</button>
+  <button data-t="prive">Privé</button>
+  <button data-t="bez">Bezittingen</button>
+  <button data-t="tijd">Aandachtspunten</button>
+</div></nav>
+<main>
+  <section id="home" class="on">
+    <div class="kpis" id="kpis"></div>
+    <div class="card"><h2>Premie per maatschappij (per jaar)</h2><div class="bars" id="barsMij"></div></div>
+    <div class="card"><h2>Verzekerde waarde per locatie</h2><div class="bars" id="barsLoc"></div></div>
+    <div class="card"><h2>Actie nodig</h2><div class="tw"><table id="actie"></table></div></div>
+  </section>
+
+  <section id="bedrijf">
+    <div class="tools">
+      <input type="search" id="qB" placeholder="Zoek op naam, maatschappij of polisnummer…">
+      <select id="fB"><option value="">Alle categorieën</option></select>
+      <select id="aB"><option value="">Actie: alles</option><option value="ja">Alleen actie nodig</option></select>
+      <button class="btn add" data-add="bedrijf">+ Toevoegen</button>
+    </div>
+    <div class="card tw"><table id="tB"></table></div>
+  </section>
+
+  <section id="prive">
+    <div class="tools"><input type="search" id="qP" placeholder="Zoek…"><button class="btn add" data-add="prive">+ Toevoegen</button></div>
+    <div class="card tw"><table id="tP"></table></div>
+    <div class="card"><h2>Notities <button class="btn add" data-add="priveNotes">+ Toevoegen</button></h2><ul id="notes"></ul></div>
+  </section>
+
+  <section id="bez">
+    <div class="tools">
+      <input type="search" id="qZ" placeholder="Zoek object…">
+      <select id="lZ"><option value="">Alle locaties</option></select>
+      <select id="sZ"><option value="">Alle soorten</option></select>
+      <button class="btn add" data-add="bez">+ Toevoegen</button>
+    </div>
+    <div class="kpis" id="kpisZ"></div>
+    <div class="card tw"><table id="tZ"></table></div>
+  </section>
+
+  <section id="tijd">
+    <div class="card"><h2>Tijdlijn en aandachtspunten <button class="btn add" data-add="tijd">+ Overleg toevoegen</button></h2><div class="tl" id="tl"></div></div>
+    <div class="card"><h2>Overige links <button class="btn add" data-add="extra">+ Toevoegen</button></h2><ul class="links" id="extra"></ul></div>
+  </section>
+  <div class="sub" id="bron"></div>
+</main>
+</div>
+<dialog id="dlg"><form id="frm" method="dialog"><h2 id="dlgTitel"></h2><div id="velden"></div>
+<div class="knoppen"><button class="btn" value="annuleer" formnovalidate>Annuleren</button><button class="btn blue" id="opslaan" value="ok">Opslaan</button></div></form></dialog>
+<div id="toast" hidden></div>
+
+<script type="module">
+import { firebaseConfig, beheerders } from './firebase-config.js';
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { getFirestore, doc, getDoc, writeBatch, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const KEYS = ['bedrijf','prive','priveNotes','bez','tijd','extra'];
+const $ = id => document.getElementById(id);
+let D = null, USER = null, EDIT = false;
+
+// ---------- hulpjes ----------
+const eur = n => n==null ? '' : '€ ' + n.toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2});
+const eur0 = n => '€ ' + Math.round(n||0).toLocaleString('nl-NL');
+const nf = n => n==null ? '' : n.toLocaleString('nl-NL',{maximumFractionDigits:2});
+const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const tag = v => v==='ja' ? '<span class="tag ja">Ja</span>' : v==='nee' ? '<span class="tag nee">Nee</span>' : '<span class="muted">–</span>';
+const act = v => v==='ja' ? '<span class="tag act">Actie</span>' : v==='nee' ? '<span class="muted">Nee</span>' : '<span class="muted">–</span>';
+const lk = (u,t='Document') => u ? `<a class="doc" href="${esc(u)}" target="_blank" rel="noopener">📄 ${t}</a>` : '';
+const sum = (a,f) => a.reduce((t,x)=>t+(f(x)||0),0);
+const eb = (sec,id) => `<span class="eb"><button data-edit="${sec}" data-id="${esc(id)}" title="Wijzigen">✏️</button><button data-del="${sec}" data-id="${esc(id)}" title="Verwijderen">🗑️</button></span>`;
+const withIds = (items, sec) => (items||[]).map((x,i) => x.id ? x : {...x, id: sec+'-'+i});
+const newId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now()+'-'+Math.random().toString(36).slice(2));
+const locName = l => /^\d+$/.test(l) ? 'Legmeerdijk '+l : l;
+function toast(t){ const e=$('toast'); e.textContent=t; e.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>e.hidden=true,2500); }
+function fillSelect(id, values, label=v=>v){
+  const s=$(id), keep=s.value;
+  while(s.options.length>1) s.remove(1);
+  values.forEach(v=>s.insertAdjacentHTML('beforeend',`<option value="${esc(v)}">${esc(label(v))}</option>`));
+  if(values.includes(keep)) s.value=keep;
+}
+
+// ---------- tabs ----------
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('section').forEach(s=>s.classList.toggle('on',s.id===b.dataset.t));
+  try{localStorage.setItem('tab',b.dataset.t)}catch(e){}
+});
+try{const t=localStorage.getItem('tab'); if(t) document.querySelector(`nav button[data-t="${t}"]`)?.click();}catch(e){}
+
+// ---------- tekenen ----------
+const sort = { tB:{key:'cat',dir:1}, tP:{key:'cat',dir:1} };
+function render(){
+  const m = D.meta||{};
+  $('bron').textContent = m.gewijzigd
+    ? `Laatst gewijzigd: ${new Date(m.gewijzigd).toLocaleString('nl-NL')} door ${m.door||'?'}`
+    : `Bron: ${m.bron||''} · gemaakt op ${m.gemaakt?new Date(m.gemaakt).toLocaleDateString('nl-NL'):''}`;
+
+  const alle = [...D.bedrijf,...D.prive];
+  $('kpis').innerHTML = [
+    ['Premie zakelijk / jaar', eur0(sum(D.bedrijf,x=>x.premie))],
+    ['Premie privé / jaar', eur0(sum(D.prive,x=>x.premie))],
+    ['Verzekerde waarde bezittingen', eur0(sum(D.bez,x=>x.waarde))],
+    ['Actie nodig', alle.filter(x=>x.actie==='ja').length + ' polissen'],
+  ].map(([l,v])=>`<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div></div>`).join('');
+
+  const bars = (el,obj) => {
+    const e = Object.entries(obj).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]); const max = Math.max(1,...e.map(x=>x[1]));
+    $(el).innerHTML = e.map(([k,v])=>`<div class="row"><div>${esc(k)}</div><div><div class="bar" style="width:${v/max*100}%"></div></div><div style="text-align:right">${eur0(v)}</div></div>`).join('');
+  };
+  const byMij={}; alle.forEach(x=>{ if(x.premie){const k=x.mij||'Onbekend'; byMij[k]=(byMij[k]||0)+x.premie;} }); bars('barsMij',byMij);
+  const byLoc={}; D.bez.forEach(x=>{ const k=locName(x.loc||'?'); byLoc[k]=(byLoc[k]||0)+(x.waarde||0); }); bars('barsLoc',byLoc);
+  $('actie').innerHTML = '<thead><tr><th>Wat</th><th>Categorie</th><th>Maatschappij</th><th>Polisnummer</th><th class="r">Premie</th></tr></thead><tbody>' +
+    alle.filter(x=>x.actie==='ja').map(x=>`<tr><td>${esc(x.wat)}${lk(x.link)}</td><td>${esc(x.cat)}</td><td>${esc(x.mij)}</td><td>${esc(x.polis)}</td><td class="r">${eur(x.premie)}</td></tr>`).join('') + '</tbody>';
+
+  fillSelect('fB', [...new Set(D.bedrijf.map(x=>x.cat).filter(Boolean))].sort());
+  drawPolis('tB','bedrijf','qB', x=>(!$('fB').value||x.cat===$('fB').value)&&(!$('aB').value||x.actie==='ja'));
+  drawPolis('tP','prive','qP');
+  $('notes').innerHTML = D.priveNotes.map(n=>`<li>${esc(n.tekst)}${lk(n.link)} ${eb('priveNotes',n.id)}</li>`).join('');
+
+  fillSelect('lZ', [...new Set(D.bez.map(x=>x.loc).filter(Boolean))], locName);
+  fillSelect('sZ', [...new Set(D.bez.map(x=>x.sub).filter(Boolean))].sort());
+  drawZ();
+
+  $('extra').innerHTML = D.extra.map(e=>`<li>${esc(e.tekst)}${lk(e.link,'Openen')} ${eb('extra',e.id)}</li>`).join('');
+  $('tl').innerHTML = [...D.tijd].sort((a,b)=>String(a.datum).localeCompare(String(b.datum))).map(d=>`<div class="d">${d.datum?new Date(d.datum).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'}):'(geen datum)'}</div> ${eb('tijd',d.id)}<div class="note">Aanwezig: ${esc(d.wie)}</div><ul>${(d.punten||[]).map(p=>`<li>${esc(p.tekst)}${p.extra?` <span class="tag act">${esc(p.extra)}</span>`:''}</li>`).join('')}</ul>`).join('');
+}
+
+function drawPolis(id, sec, q, extra){
+  const st = sort[id];
+  const cols=[['nr','Nr'],['wat','Wat verzekerd'],['cat','Categorie'],['mij','Maatschappij'],['polis','Polisnummer'],['verz','Verzekerd'],['actie','Actie'],['premie','Premie','r'],['opm','Opmerking']];
+  const t = $(q).value.toLowerCase();
+  const r = D[sec].filter(x=>(!t || [x.wat,x.mij,x.polis,x.cat,x.opm].join(' ').toLowerCase().includes(t)) && (!extra || extra(x)));
+  r.sort((a,b)=>{const A=a[st.key]??'',B=b[st.key]??''; return (typeof A==='number'&&typeof B==='number'?A-B:String(A).localeCompare(String(B),'nl',{numeric:true}))*st.dir;});
+  $(id).innerHTML = '<thead><tr>'+cols.map(c=>`<th class="${c[2]||''}" data-k="${c[0]}">${c[1]}${st.key===c[0]?(st.dir>0?' ▲':' ▼'):''}</th>`).join('')+(EDIT?'<th></th>':'')+'</tr></thead><tbody>'+
+    r.map(x=>`<tr><td class="muted">${esc(x.nr)}</td><td>${esc(x.wat)}${lk(x.link)}</td><td>${esc(x.cat)}</td><td>${esc(x.mij)}</td><td>${esc(x.polis)}</td><td>${tag(x.verz)}</td><td>${act(x.actie)}</td><td class="r">${eur(x.premie)}</td><td class="muted">${esc(x.opm)}</td>${EDIT?`<td>${eb(sec,x.id)}</td>`:''}</tr>`).join('')+
+    `</tbody><tfoot><tr><td colspan="7">Totaal (${r.length} regels)</td><td class="r">${eur(sum(r,x=>x.premie))}</td><td${EDIT?' colspan="2"':''}></td></tr></tfoot>`;
+  $(id).querySelectorAll('th[data-k]').forEach(th=>th.onclick=()=>{ if(st.key===th.dataset.k) st.dir=-st.dir; else {st.key=th.dataset.k;st.dir=1;} drawPolis(id,sec,q,extra); });
+  $(q).oninput = () => drawPolis(id,sec,q,extra);
+  if(sec==='bedrijf'){ $('fB').oninput = $('aB').oninput = () => drawPolis(id,sec,q,extra); }
+}
+
+function drawZ(){
+  const t=$('qZ').value.toLowerCase(), l=$('lZ').value, s=$('sZ').value;
+  const r = D.bez.filter(x=>(!t||[x.obj,x.opm,x.sub].join(' ').toLowerCase().includes(t))&&(!l||x.loc===l)&&(!s||x.sub===s));
+  const g = {}; r.forEach(x=>{const k=locName(x.loc||'?')+(x.afd&&x.afd!=='-'?' · '+x.afd:''); (g[k]=g[k]||[]).push(x);});
+  $('kpisZ').innerHTML = [['Objecten',r.length],['Totale waarde',eur0(sum(r,x=>x.waarde))]].map(([a,b])=>`<div class="kpi"><div class="l">${a}</div><div class="v">${b}</div></div>`).join('');
+  const ex = EDIT?'<td></td>':'';
+  let h='<thead><tr><th>Object</th><th>Soort</th><th class="r">Aantal</th><th>Eenheid</th><th class="r">Prijs</th><th class="r">Waarde</th><th>Opmerking</th>'+(EDIT?'<th></th>':'')+'</tr></thead><tbody>';
+  for(const [k,items] of Object.entries(g).sort((a,b)=>a[0].localeCompare(b[0],'nl',{numeric:true}))){
+    h+=`<tr class="grp"><td colspan="5">${esc(k)}</td><td class="r">${eur0(sum(items,x=>x.waarde))}</td><td></td>${ex}</tr>`;
+    items.sort((a,b)=>String(a.obj).localeCompare(String(b.obj),'nl')).forEach(x=>h+=`<tr><td>${esc(x.obj)}${lk(x.link)}</td><td class="muted">${esc(x.sub)}</td><td class="r">${nf(x.aantal)}</td><td class="muted">${esc(x.eenh)}</td><td class="r">${eur(x.prijs)}</td><td class="r">${eur0(x.waarde)}</td><td class="muted">${esc(x.opm)}</td>${EDIT?`<td>${eb('bez',x.id)}</td>`:''}</tr>`);
+  }
+  $('tZ').innerHTML = h+`</tbody><tfoot><tr><td colspan="5">Totaal</td><td class="r">${eur0(sum(r,x=>x.waarde))}</td><td></td>${ex}</tr></tfoot>`;
+}
+['qZ','lZ','sZ'].forEach(i=>$(i).oninput=drawZ);
+
+// ---------- formulier ----------
+const POLIS = [['nr','Nr'],['wat','Wat verzekerd','text',1],['cat','Categorie','list'],['mij','Maatschappij','list'],['polis','Polisnummer'],['verz','Verzekerd','jn'],['actie','Actie nodig','jn'],['premie','Premie per jaar (€)','num'],['opm','Opmerking'],['link','Link naar document (Drive)','url']];
+const FIELDS = {
+  bedrijf: POLIS, prive: POLIS,
+  bez: [['loc','Locatie (bijv. 199, 207, 250)','list'],['afd','Afdeling','list'],['sub','Soort','list'],['obj','Object','text',1],['aantal','Aantal','num'],['eenh','Eenheid','list'],['prijs','Prijs per eenheid (€)','num'],['waarde','Waarde (€) – leeg laten = aantal × prijs','num'],['opm','Opmerking'],['link','Link naar document (Drive)','url']],
+  priveNotes: [['tekst','Notitie','text',1],['link','Link (Drive)','url']],
+  extra: [['tekst','Omschrijving','text',1],['link','Link','url',1]],
+  tijd: [['datum','Datum','date',1],['wie','Aanwezig'],['punten','Punten – één per regel. Extra info na een | (bijv: Olietanken opzeggen | KJ vraagt na)','area']],
+};
+const NAMEN = { bedrijf:'zakelijke polis', prive:'privé polis', bez:'bezitting', priveNotes:'notitie', extra:'link', tijd:'overleg' };
+
+function openForm(sec, id){
+  const item = id ? D[sec].find(x=>x.id===id) : (sec==='prive'?{cat:'Privé'}:{});
+  if(!item) return;
+  $('dlgTitel').textContent = (id?'Wijzig ':'Nieuwe ') + NAMEN[sec];
+  $('velden').innerHTML = FIELDS[sec].map(([k,l,t='text',req])=>{
+    let v = item[k];
+    if(k==='punten') v = (v||[]).map(p=>p.extra?`${p.tekst} | ${p.extra}`:p.tekst).join('\n');
+    const r = req?' required':'';
+    if(t==='jn') return `<label>${l}</label><select name="${k}"><option value="">–</option><option value="ja"${v==='ja'?' selected':''}>Ja</option><option value="nee"${v==='nee'?' selected':''}>Nee</option></select>`;
+    if(t==='area') return `<label>${l}</label><textarea name="${k}">${esc(v)}</textarea>`;
+    if(t==='list'){ const opts=[...new Set(D[sec].map(x=>x[k]).filter(Boolean))].sort(); return `<label>${l}</label><input name="${k}" list="dl_${k}" value="${esc(v)}"${r}><datalist id="dl_${k}">${opts.map(o=>`<option value="${esc(o)}">`).join('')}</datalist>`; }
+    if(t==='num') return `<label>${l}</label><input name="${k}" inputmode="decimal" pattern="-?[0-9.]*[,.]?[0-9]*" value="${v==null?'':String(v).replace('.',',')}"${r}>`;
+    return `<label>${l}</label><input name="${k}" type="${t}" value="${esc(v)}"${r}>`;
+  }).join('');
+  const dlg=$('dlg');
+  dlg.onclose = async () => {
+    if(dlg.returnValue!=='ok') return;
+    const f = new FormData($('frm')), nieuw = { ...item, id: id || newId() };
+    for(const [k,,t='text'] of FIELDS[sec]){
+      let v = (f.get(k)||'').toString().trim();
+      if(t==='num'){ v = v.replace(/\s/g,''); if(v.includes(',')) v = v.replace(/\./g,'').replace(',','.'); v = v==='' || isNaN(Number(v)) ? null : Number(v); }
+      if(k==='punten') v = v.split('\n').map(x=>x.trim()).filter(Boolean).map(x=>{const [a,...b]=x.split('|'); return {tekst:a.trim(), extra:b.join('|').trim()};});
+      nieuw[k] = v;
+    }
+    if(sec==='bez' && (nieuw.waarde==null)) nieuw.waarde = (nieuw.aantal||0)*(nieuw.prijs||0);
+    await opslaan(sec, items => { const i=items.findIndex(x=>x.id===nieuw.id); if(i>=0) items[i]=nieuw; else items.push(nieuw); return items; }, id?'Gewijzigd':'Toegevoegd');
+  };
+  dlg.returnValue=''; dlg.showModal();
+}
+
+async function opslaan(sec, wijzig, melding){
+  try{
+    const ref = doc(db,'overzicht',sec), metaRef = doc(db,'overzicht','meta');
+    const items = await runTransaction(db, async tx => {
+      const snap = await tx.get(ref);
+      const nieuw = wijzig(withIds(snap.exists()?snap.data().items:[], sec));
+      tx.set(ref, {items:nieuw});
+      tx.set(metaRef, {gewijzigd:new Date().toISOString(), door:USER.email}, {merge:true});
+      return nieuw;
+    });
+    D[sec] = items; D.meta = {...D.meta, gewijzigd:new Date().toISOString(), door:USER.email};
+    render(); toast(melding+' ✔');
+  }catch(e){
+    alert(e.code==='permission-denied' ? 'Je mag niets wijzigen. Vraag de beheerder.' : 'Opslaan mislukt: '+e.message);
+  }
+}
+
+document.addEventListener('click', e=>{
+  const a=e.target.closest('[data-add]'); if(a){ openForm(a.dataset.add); return; }
+  const ed=e.target.closest('[data-edit]'); if(ed){ openForm(ed.dataset.edit, ed.dataset.id); return; }
+  const del=e.target.closest('[data-del]');
+  if(del){
+    const sec=del.dataset.del, id=del.dataset.id, x=D[sec].find(i=>i.id===id);
+    const naam = x?.wat||x?.obj||x?.tekst||x?.datum||'';
+    if(confirm(`Weet je zeker dat je "${naam}" wilt verwijderen?`))
+      opslaan(sec, items=>items.filter(i=>i.id!==id), 'Verwijderd');
+  }
+});
+
+$('editBtn').onclick = () => { EDIT=!EDIT; document.body.classList.toggle('edit',EDIT); $('editBtn').textContent = EDIT?'✔ Klaar':'✏️ Bewerken'; render(); };
+
+$('expBtn').onclick = () => {
+  const out = { bron:D.meta?.bron||'', gemaakt:D.meta?.gemaakt||'' }; KEYS.forEach(k=>out[k]=D[k]);
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(out,null,1)],{type:'application/json'}));
+  a.download=`verzekeringen-backup-${new Date().toISOString().slice(0,10)}.json`; a.click();
+};
+
+// ---------- inloggen ----------
+$('in').onclick = () => signInWithPopup(auth, new GoogleAuthProvider())
+  .catch(e => $('fout').textContent = 'Inloggen mislukt: ' + e.message);
+$('uit').onclick = () => signOut(auth);
+
+onAuthStateChanged(auth, async user => {
+  USER = user; $('fout').textContent = '';
+  if (!user) { $('login').hidden=false; $('app').hidden=true; $('user').hidden=true; $('in').hidden=false; return; }
+  const beheer = beheerders.includes(user.email.toLowerCase());
+  $('user').hidden=false; $('uit').title='Ingelogd als '+user.email;
+  ['editBtn','expBtn','upBtn'].forEach(i=>$(i).hidden=!beheer);
+  try {
+    const meta = await getDoc(doc(db,'overzicht','meta'));
+    if (!meta.exists()) {
+      $('loginTekst').textContent = 'Er staan nog geen gegevens in de database. Klik bovenaan op "⬆ Importeren" en kies data.json.';
+      $('in').hidden = true; return;
+    }
+    D = { meta: meta.data() };
+    const docs = await Promise.all(KEYS.map(k => getDoc(doc(db,'overzicht',k))));
+    docs.forEach((d,i) => D[KEYS[i]] = withIds(d.exists()?d.data().items:[], KEYS[i]));
+    $('login').hidden=true; $('app').hidden=false;
+    render();
+  } catch (e) {
+    $('login').hidden=false; $('app').hidden=true; $('in').hidden=true; $('loginTekst').textContent='';
+    $('fout').textContent = e.code==='permission-denied'
+      ? `Geen toegang voor ${user.email}. Vraag de beheerder om je toe te voegen.`
+      : 'Fout bij laden: ' + e.message;
+  }
+});
+
+$('upFile').onchange = async ev => {
+  const f = ev.target.files[0]; ev.target.value=''; if (!f) return;
+  if (D && !confirm('Let op: hiermee vervang je ALLE gegevens door dit bestand. Wijzigingen die je online hebt gedaan, gaan dan verloren. Doorgaan?')) return;
+  try {
+    const J = JSON.parse(await f.text());
+    const b = writeBatch(db);
+    b.set(doc(db,'overzicht','meta'), { bron:J.bron||f.name, gemaakt:J.gemaakt||new Date().toISOString().slice(0,10) });
+    KEYS.forEach(k => b.set(doc(db,'overzicht',k), { items: withIds(J[k],k) }));
+    await b.commit();
+    alert('Gegevens geïmporteerd.'); location.reload();
+  } catch (e) { alert('Importeren mislukt: ' + e.message); }
+};
+</script>
+
+</body>
+</html>
