@@ -140,6 +140,9 @@ table.info .aantal{font-weight:400;color:#555}
 .schakel button.on{background:var(--green);color:#fff}
 table.piv .hoev{font-size:12px;color:#666;font-weight:400}
 table.piv td.klik:hover .hoev{color:#e8eefc}
+table.info tr.objklik{cursor:pointer}
+table.info tr.objklik:hover td{background:var(--hl)}
+table.info tr.i2.hl td{background:#b9d3f7}
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -150,7 +153,7 @@ table.piv td.klik:hover .hoev{color:#e8eefc}
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.17</span>
+  <span class="versie" title="Versie">v1.18</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="expBtn" hidden title="Alle gegevens downloaden als back-up">⬇ Back-up</button>
@@ -237,7 +240,7 @@ table.piv td.klik:hover .hoev{color:#e8eefc}
 </div>
 <dialog id="dlg"><form id="frm" method="dialog"><h2 id="dlgTitel"></h2><div id="velden"></div>
 <div class="knoppen"><button class="btn" value="annuleer" formnovalidate>Annuleren</button><button class="btn blue" id="opslaan" value="ok">Opslaan</button></div></form></dialog>
-<dialog id="dlgInfo" class="breed"><form method="dialog"><h2 id="infoTitel"></h2><div id="infoInhoud" class="tw"></div><div class="knoppen"><button type="button" class="btn klein" id="infoOpen">▼ Alles open</button><button type="button" class="btn klein" id="infoDicht">▶ Alles dicht</button><span style="flex:1"></span><button class="btn blue">Sluiten</button></div></form></dialog>
+<dialog id="dlgInfo" class="breed"><form method="dialog"><h2 id="infoTitel"></h2><div id="infoInhoud" class="tw"></div><div class="knoppen"><span id="infoKnop" class="schakel" style="float:none"><button type="button" data-m="afd">Per afdeling</button><button type="button" data-m="obj">Per object</button></span><button type="button" class="btn klein" id="infoOpen">▼ Alles open</button><button type="button" class="btn klein" id="infoDicht">▶ Alles dicht</button><span style="flex:1"></span><button class="btn blue">Sluiten</button></div></form></dialog>
 <div id="toast" hidden></div>
 
 <script type="module">
@@ -379,9 +382,8 @@ $('pZ').addEventListener('click', e=>{
   const { rowOf, perObj } = PIV;
   const items = r.filter(x=>(ps==='*'||rowOf(x)===ps) && (pc==='*'||colOf(x)===pc));
   const waar = [ps==='*'?(perObj?'Alle objecten':'Alle soorten'):(perObj?objNaam(ps):ps), pc==='*'?(l?locName(l):'alle locaties'):(l?locName(l)+' · '+pc:pc)].join(' – ');
-  INFO = { items, open:new Set() };
-  const locs = [...new Set(items.map(x=>x.loc||'?'))];
-  if(locs.length===1) INFO.open.add('L:'+locs[0]);   // één locatie: die staat meteen open, afdelingen dicht
+  INFO = { items, open:new Set(), mode: PIV.perObj ? 'obj' : 'afd' };
+  alleOpen();   // pop-up opent met alles open
   $('infoTitel').textContent = waar;
   renderInfo();
   $('dlgInfo').showModal();
@@ -392,30 +394,47 @@ $('pZ').addEventListener('contextmenu', e=>{ const c=e.target.closest('td.klik')
 // klik (links of rechts) buiten de pop-up sluit hem
 const buiten = (dlg,e) => { const r=dlg.getBoundingClientRect(); return e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom; };
 ['click','contextmenu'].forEach(t=>$('dlgInfo').addEventListener(t, e=>{ if(buiten($('dlgInfo'),e)){ e.preventDefault(); $('dlgInfo').close(); } }));
+function alleOpen(){ INFO.items.forEach(x=>{ const l=x.loc||'?'; INFO.open.add('L:'+l); INFO.open.add('A:'+l+'|'+afdNaam(x.afd)); INFO.open.add('O:'+l+'|'+objKey(x)); }); }
 function renderInfo(){
-  const items = INFO.items, O = INFO.open;
+  const items = INFO.items, O = INFO.open, perObj = INFO.mode==='obj';
+  document.querySelectorAll('#infoKnop button').forEach(b=>b.classList.toggle('on', b.dataset.m===INFO.mode));
   const veelSoort = new Set(items.map(x=>x.sub)).size>1, nk = veelSoort?6:5;
-  const L = {}; items.forEach(x=>{ const l=x.loc||'?', a=afdNaam(x.afd); ((L[l]=L[l]||{})[a]=L[l][a]||[]).push(x); });
-  let h = `<table class="info"><thead><tr><th>Object</th>${veelSoort?'<th>Soort</th>':''}<th class="r">Aantal</th><th>Eenheid</th><th class="r">Prijs</th><th class="r">Waarde</th></tr></thead><tbody>`;
+  const groep = x => perObj ? objKey(x) : afdNaam(x.afd);
+  const L = {}; items.forEach(x=>{ const l=x.loc||'?', g=groep(x); ((L[l]=L[l]||{})[g]=L[l][g]||[]).push(x); });
+  const hoev = it => { const q={}; it.forEach(x=>{ if(x.aantal==null) return; const e=((x.eenh||'').trim()||'stuks').toLowerCase().replace(/^stuk$/,'stuks'); q[e]=(q[e]||0)+x.aantal; }); return Object.entries(q).map(([e,n])=>nf(n)+' '+e).join(' + '); };
+  let h = `<table class="info"><thead><tr><th>${perObj?'Object / afdeling':'Object'}</th>${veelSoort?'<th>Soort</th>':''}<th class="r">Aantal</th><th>Eenheid</th><th class="r">Prijs</th><th class="r">Waarde</th></tr></thead><tbody>`;
   for(const loc of Object.keys(L).sort((a,b)=>a.localeCompare(b,'nl',{numeric:true}))){
-    const kL='L:'+loc, oL=O.has(kL), afds=Object.keys(L[loc]).sort(afdSort), all=Object.values(L[loc]).flat();
-    h += `<tr class="itog i1" data-k="${esc(kL)}"><td colspan="${nk-1}"><span class="pijl">${oL?'▼':'▶'}</span>${esc(locName(loc))}<span class="aantal">(${afds.length} afdeling${afds.length>1?'en':''}, ${all.length} objecten)</span></td><td class="r">${eur0(sum(all,x=>x.waarde))}</td></tr>`;
+    const kL='L:'+loc, oL=O.has(kL), all=Object.values(L[loc]).flat();
+    const nAfd = new Set(all.map(x=>afdNaam(x.afd))).size;
+    const gs = Object.keys(L[loc]).sort(perObj?(a,b)=>a.localeCompare(b,'nl'):afdSort);
+    h += `<tr class="itog i1" data-k="${esc(kL)}"><td colspan="${nk-1}"><span class="pijl">${oL?'▼':'▶'}</span>${esc(locName(loc))}<span class="aantal">(${nAfd} afdeling${nAfd>1?'en':''}, ${all.length} objecten)</span></td><td class="r">${eur0(sum(all,x=>x.waarde))}</td></tr>`;
     if(!oL) continue;
-    for(const afd of afds){
-      const kA='A:'+loc+'|'+afd, oA=O.has(kA), it=L[loc][afd];
-      h += `<tr class="itog i2" data-k="${esc(kA)}"><td colspan="${nk-1}"><span class="pijl">${oA?'▼':'▶'}</span>${esc(afd)}<span class="aantal">(${it.length})</span></td><td class="r">${eur0(sum(it,x=>x.waarde))}</td></tr>`;
-      if(!oA) continue;
-      it.sort((a,b)=>(b.waarde||0)-(a.waarde||0)).forEach(x=> h += `<tr class="i3"><td>${esc(x.obj)}${x.opm?` <span class="muted">– ${esc(x.opm)}</span>`:''}</td>${veelSoort?`<td class="muted">${esc(x.sub)}</td>`:''}<td class="r">${nf(x.aantal)}</td><td class="muted">${esc(x.eenh)}</td><td class="r">${eur(x.prijs)}</td><td class="r">${eur0(x.waarde)}</td></tr>`);
+    for(const g of gs){
+      const kG=(perObj?'O:':'A:')+loc+'|'+g, oG=O.has(kG), it=L[loc][g];
+      if(perObj){
+        const naam = it[0].obj||'?';
+        h += `<tr class="itog i2" data-k="${esc(kG)}"><td colspan="${veelSoort?2:1}"><span class="pijl">${oG?'▼':'▶'}</span>${esc(naam)}<span class="aantal">(${it.length} afdeling${it.length>1?'en':''})</span></td><td class="r" colspan="2">${hoev(it)}</td><td></td><td class="r">${eur0(sum(it,x=>x.waarde))}</td></tr>`;
+        if(!oG) continue;
+        it.sort((a,b)=>afdSort(afdNaam(a.afd),afdNaam(b.afd))).forEach(x=> h += `<tr class="i3"><td>${esc(afdNaam(x.afd))}${x.opm?` <span class="muted">– ${esc(x.opm)}</span>`:''}</td>${veelSoort?`<td class="muted">${esc(x.sub)}</td>`:''}<td class="r">${nf(x.aantal)}</td><td class="muted">${esc(x.eenh)}</td><td class="r">${eur(x.prijs)}</td><td class="r">${eur0(x.waarde)}</td></tr>`);
+      } else {
+        h += `<tr class="itog i2" data-k="${esc(kG)}"><td colspan="${nk-1}"><span class="pijl">${oG?'▼':'▶'}</span>${esc(g)}<span class="aantal">(${it.length})</span></td><td class="r">${eur0(sum(it,x=>x.waarde))}</td></tr>`;
+        if(!oG) continue;
+        it.sort((a,b)=>(b.waarde||0)-(a.waarde||0)).forEach(x=> h += `<tr class="i3 objklik" data-o="${esc(objKey(x))}" title="Klik: objecten bij elkaar zetten"><td>${esc(x.obj)}${x.opm?` <span class="muted">– ${esc(x.opm)}</span>`:''}</td>${veelSoort?`<td class="muted">${esc(x.sub)}</td>`:''}<td class="r">${nf(x.aantal)}</td><td class="muted">${esc(x.eenh)}</td><td class="r">${eur(x.prijs)}</td><td class="r">${eur0(x.waarde)}</td></tr>`);
+      }
     }
   }
   h += `</tbody><tfoot><tr><td colspan="${nk-1}">Totaal (${items.length} objecten)</td><td class="r">${eur0(sum(items,x=>x.waarde))}</td></tr></tfoot></table>`;
   $('infoInhoud').innerHTML = h;
+  if(INFO.hl){ const t=$('infoInhoud').querySelector(`tr.i2[data-k$="|${CSS.escape(INFO.hl)}"]`); if(t){ t.classList.add('hl'); t.scrollIntoView({block:'center'}); } INFO.hl=null; }
 }
 $('infoInhoud').addEventListener('click', e=>{
+  const o = e.target.closest('tr.objklik');
+  if(o){ INFO.mode='obj'; INFO.hl=o.dataset.o; renderInfo(); return; }
   const r = e.target.closest('tr.itog'); if(!r) return;
   const k = r.dataset.k; INFO.open.has(k) ? INFO.open.delete(k) : INFO.open.add(k); renderInfo();
 });
-$('infoOpen').onclick = () => { INFO.items.forEach(x=>{ INFO.open.add('L:'+(x.loc||'?')); INFO.open.add('A:'+(x.loc||'?')+'|'+afdNaam(x.afd)); }); renderInfo(); };
+document.querySelectorAll('#infoKnop button').forEach(b=>b.onclick=()=>{ INFO.mode=b.dataset.m; renderInfo(); });
+$('infoOpen').onclick = () => { alleOpen(); renderInfo(); };
 $('infoDicht').onclick = () => { INFO.open.clear(); renderInfo(); };
 let PIVROW = 'soort';
 try{ PIVROW = localStorage.getItem('pivrow') || 'soort'; }catch(e){}
