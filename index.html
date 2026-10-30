@@ -151,6 +151,18 @@ table.piv tr.pobj td{background:#faf8f3;font-size:13px}
 table.piv tr.pobj td:first-child{padding-left:34px;color:#333}
 table.piv tr.pobj td.tot{background:#eaf1fd}
 #dlgInfo .knoppen{flex-wrap:wrap}
+table.piv th.hkop{cursor:pointer;user-select:none}
+table.piv th.hkop:hover{background:#a3a3a3}
+table.piv th.hkop .pijl{color:var(--green);margin-right:6px;font-size:12px}
+table.piv th.hkop.open{text-align:center;background:#9fb9a8;border-bottom:2px solid var(--green)}
+table.piv th.asub{font-size:13px;background:#d6e3da;color:var(--ink)}
+table.piv td.ptog,table.piv tr.pobj td:first-child{white-space:nowrap}
+table.piv td,table.piv th{padding:6px 9px}
+table.piv td.r,table.piv th.r{min-width:76px}
+table.piv .ltot{background:#e9f0eb;font-weight:700}
+table.piv th.ltot{background:#c4d8ca}
+.wl{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.wl a.doc{margin-left:auto;flex-shrink:0}
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -161,7 +173,7 @@ table.piv tr.pobj td.tot{background:#eaf1fd}
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.23</span>
+  <span class="versie" title="Versie">v1.25</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="expBtn" hidden title="Alle gegevens downloaden als back-up">⬇ Back-up</button>
@@ -225,7 +237,7 @@ table.piv tr.pobj td.tot{background:#eaf1fd}
       <select id="sZ"><option value="">Alle soorten</option></select>
       <button class="btn add" data-add="bez">+ Toevoegen</button>
     </div>
-    <div class="card tw"><h2><span id="pZt">Totaal per soort en afdeling</span> <span style="float:right"><span id="pivMode" class="schakel" style="float:none;margin-right:8px"><button type="button" data-m="waarde">Waarde</button><button type="button" data-m="prijs">Stuksprijs</button></span><button type="button" class="btn klein" id="pivOpen">▼ Alles open</button> <button type="button" class="btn klein" id="pivDicht">▶ Alles dicht</button></span></h2><table id="pZ" class="piv"></table></div>
+    <div class="card tw"><h2><span id="pZt">Totaal per soort en afdeling</span> <span style="float:right"><span id="pivMode" class="schakel" style="float:none;margin-right:8px"><button type="button" data-m="waarde">Waarde</button><button type="button" data-m="prijs">Stuksprijs</button><button type="button" data-m="aantal">Aantal</button></span><button type="button" class="btn klein" id="pivOpen">▼ Alles open</button> <button type="button" class="btn klein" id="pivDicht">▶ Alles dicht</button></span></h2><table id="pZ" class="piv"></table></div>
     <div class="card tw" hidden><h2>Alle objecten <span style="float:right"><button class="btn klein" id="zOpen">▼ Alles open</button> <button class="btn klein" id="zDicht">▶ Alles dicht</button></span></h2><table id="tZ"></table></div>
   </section>
 
@@ -316,7 +328,7 @@ function render(){
   const byMij={}; alle.forEach(x=>{ if(x.premie){const k=x.mij||'Onbekend'; byMij[k]=(byMij[k]||0)+x.premie;} }); bars('barsMij',byMij);
   const byLoc={}; D.bez.forEach(x=>{ const k=locName(x.loc||'?'); byLoc[k]=(byLoc[k]||0)+(x.waarde||0); }); bars('barsLoc',byLoc);
   $('actie').innerHTML = '<thead><tr><th>Wat</th><th>Categorie</th><th>Maatschappij</th><th>Polisnummer</th><th class="r">Premie</th></tr></thead><tbody>' +
-    alle.filter(x=>x.actie==='ja').map(x=>`<tr><td>${esc(x.wat)}${lk(x.link)}</td><td>${esc(x.cat)}</td><td>${esc(x.mij)}</td><td>${esc(x.polis)}</td><td class="r">${eur(x.premie)}</td></tr>`).join('') + '</tbody>';
+    alle.filter(x=>x.actie==='ja').map(x=>`<tr><td><div class="wl"><span>${esc(x.wat)}</span>${lk(x.link)}</div></td><td>${esc(x.cat)}</td><td>${esc(x.mij)}</td><td>${esc(x.polis)}</td><td class="r">${eur(x.premie)}</td></tr>`).join('') + '</tbody>';
 
   fillSelect('fB', [...new Set(D.bedrijf.map(x=>x.cat).filter(Boolean))].sort());
   drawPolis('tB','bedrijf','qB', x=>(!$('fB').value||x.cat===$('fB').value)&&(!$('aB').value||x.actie==='ja'));
@@ -339,7 +351,7 @@ function drawPolis(id, sec, q, extra){
   const r = D[sec].filter(x=>(!t || [x.wat,x.mij,x.polis,x.cat,x.opm].join(' ').toLowerCase().includes(t)) && (!extra || extra(x)));
   r.sort((a,b)=>{const A=a[st.key]??'',B=b[st.key]??''; return (typeof A==='number'&&typeof B==='number'?A-B:String(A).localeCompare(String(B),'nl',{numeric:true}))*st.dir;});
   $(id).innerHTML = '<thead><tr>'+cols.map(c=>`<th class="${c[2]||''}" data-k="${c[0]}">${c[1]}${st.key===c[0]?(st.dir>0?' ▲':' ▼'):''}</th>`).join('')+(EDIT?'<th></th>':'')+'</tr></thead><tbody>'+
-    r.map(x=>`<tr><td class="muted">${esc(x.nr)}</td><td>${esc(x.wat)}${lk(x.link)}</td><td>${esc(x.cat)}</td><td>${mijLink(x.mij)}</td><td>${esc(x.polis)}</td><td>${tag(x.verz)}</td><td>${act(x.actie)}</td><td class="r">${eur(x.premie)}</td><td class="muted">${esc(x.opm)}</td>${EDIT?`<td>${eb(sec,x.id)}</td>`:''}</tr>`).join('')+
+    r.map(x=>`<tr><td class="muted">${esc(x.nr)}</td><td><div class="wl"><span>${esc(x.wat)}</span>${lk(x.link)}</div></td><td>${esc(x.cat)}</td><td>${mijLink(x.mij)}</td><td>${esc(x.polis)}</td><td>${tag(x.verz)}</td><td>${act(x.actie)}</td><td class="r">${eur(x.premie)}</td><td class="muted">${esc(x.opm)}</td>${EDIT?`<td>${eb(sec,x.id)}</td>`:''}</tr>`).join('')+
     `</tbody><tfoot><tr><td colspan="7">Totaal (${r.length} regels)</td><td class="r">${eur(sum(r,x=>x.premie))}</td><td${EDIT?' colspan="2"':''}></td></tr></tfoot>`;
   $(id).querySelectorAll('th[data-k]').forEach(th=>th.onclick=()=>{ if(st.key===th.dataset.k) st.dir=-st.dir; else {st.key=th.dataset.k;st.dir=1;} drawPolis(id,sec,q,extra); });
   $(q).oninput = () => drawPolis(id,sec,q,extra);
@@ -386,12 +398,12 @@ $('lZ').addEventListener('input',()=>{ $('aZ').value=''; drawZ(); });
 let PIV = null;
 $('pZ').addEventListener('click', e=>{
   const c = e.target.closest('td.klik'); if(!c || !PIV) return;
-  const ps=c.dataset.ps, pc=c.dataset.pc, { r, colOf, l } = PIV;
+  const ps=c.dataset.ps, pc=c.dataset.pc, { r, l } = PIV;
   const po = c.dataset.po||'';
-  const items = r.filter(x=>(ps==='*'||(x.sub||'Overig')===ps) && (!po||objKey(x)===po) && (pc==='*'||colOf(x)===pc));
+  const items = r.filter(x=>(ps==='*'||(x.sub||'Overig')===ps) && (!po||objKey(x)===po) && colMatch(pc,x));
   const objTitel = po ? ((items[0]||{}).obj||objNaam(po)) : '';
-  const waar = [ps==='*'?'Alle soorten':(po?objTitel:ps), pc==='*'?(l?locName(l):'alle locaties'):(l?locName(l)+' · '+pc:pc)].join(' – ');
-  const filt = x=>(ps==='*'||(x.sub||'Overig')===ps) && (!po||objKey(x)===po) && (pc==='*'||colOf(x)===pc) && (!l||x.loc===l);
+  const waar = [ps==='*'?'Alle soorten':(po?objTitel:ps), pc==='*'?(l?locName(l):'alle locaties'):colLabel(pc)].join(' – ');
+  const filt = x=>(ps==='*'||(x.sub||'Overig')===ps) && (!po||objKey(x)===po) && colMatch(pc,x) && (!l||x.loc===l);
   const een = f => { const v=[...new Set(items.map(f))]; return v.length===1?v[0]:''; };
   const preset = { sub: ps!=='*'?ps:'', loc: een(x=>x.loc), afd: een(x=>x.afd), obj: po?objTitel:'' };
   INFO = { items, open:new Set(), mode: po ? 'obj' : 'afd', filt, preset };
@@ -456,44 +468,70 @@ const objKey = x => String(x.obj||'?').trim().toLowerCase();
 const objNaam = k => k.charAt(0).toUpperCase()+k.slice(1);
 const PIVOPEN = new Set();
 let PIVMODE = 'waarde'; try{ PIVMODE = localStorage.getItem('pivmode')||'waarde'; }catch(e){}
+const PIVHOPEN = new Set();   // locaties die horizontaal zijn uitgeklapt
+const colMatch = (id,x) => { if(id==='*') return true; const [t,loc,afd]=id.split('|'); return (x.loc||'?')===loc && (t==='L' || afdNaam(x.afd)===afd); };
+const colLabel = id => { if(id==='*') return ''; const [t,loc,afd]=id.split('|'); return t==='L' ? locName(loc) : locName(loc)+' · '+afd; };
 function drawPivot(r, l){
-  // rijen: soort (klik = objecten eronder), kolommen: afdeling bij gekozen locatie, anders locatie
+  // rijen: soort (klik = objecten eronder)
+  // kolommen: locaties (klik = afdelingen horizontaal), of afdelingen bij gekozen locatie
   const zoek = !!$('qZ').value;
-  const colOf = x => l ? afdNaam(x.afd) : locName(x.loc||'?');
   const sOf = x => x.sub||'Overig';
-  const cols = [...new Set(r.map(colOf))].sort(l?afdSort:(a,b)=>a.localeCompare(b,'nl',{numeric:true}));
   const rows = [...new Set(r.map(sOf))].sort((a,b)=>a.localeCompare(b,'nl'));
+  const locs = [...new Set(r.map(x=>x.loc||'?'))].sort((a,b)=>a.localeCompare(b,'nl',{numeric:true}));
+  const afdsVan = loc => [...new Set(r.filter(x=>(x.loc||'?')===loc).map(x=>afdNaam(x.afd)))].sort(afdSort);
+  const kanOpen = loc => !(afdsVan(loc).length===1 && afdsVan(loc)[0]==='Algemeen');
+  const cols = [], groepen = [];   // cols: {id,label,ltot}
+  if(l){ afdsVan(l).forEach(a=>cols.push({id:'A|'+l+'|'+a, label:a})); }
+  else locs.forEach(loc=>{
+    const open = PIVHOPEN.has(loc) && kanOpen(loc);
+    if(open){ const a=afdsVan(loc); a.forEach(x=>cols.push({id:'A|'+loc+'|'+x, label:x})); cols.push({id:'L|'+loc, label:'Totaal', ltot:true}); groepen.push({loc, n:a.length+1, open:true}); }
+    else { cols.push({id:'L|'+loc, label:locName(loc)}); groepen.push({loc, n:1, open:false}); }
+  });
+  const mode = PIVMODE, prijsMode = mode==='prijs', aantalMode = mode==='aantal';
+  document.querySelectorAll('#pivMode button').forEach(b=>b.classList.toggle('on', b.dataset.m===mode));
   const v = {}, q = {}, pr = {};
-  const prijsMode = PIVMODE==='prijs';
-  document.querySelectorAll('#pivMode button').forEach(b=>b.classList.toggle('on', b.dataset.m===PIVMODE));
   const addQ = (k,x) => { if(x.aantal==null) return; const e=((x.eenh||'').trim()||'stuks').toLowerCase().replace(/^stuk$/,'stuks'); (q[k]=q[k]||{}); q[k][e]=(q[k][e]||0)+x.aantal; };
-  r.forEach(x=>{ const s=sOf(x), o=objKey(x), c=colOf(x);
-    for(const k of [s+'|'+c, s+'|*']) v[k]=(v[k]||0)+(x.waarde||0);
-    for(const k of [s+'§'+o+'|'+c, s+'§'+o+'|*']){ v[k]=(v[k]||0)+(x.waarde||0); addQ(k,x); if(x.prijs!=null) (pr[k]=pr[k]||new Set()).add(x.prijs); } });
+  r.forEach(x=>{ const s=sOf(x), o=objKey(x), loc=x.loc||'?';
+    for(const c of ['*','L|'+loc,'A|'+loc+'|'+afdNaam(x.afd)]){
+      for(const k of [s+'|'+c]){ v[k]=(v[k]||0)+(x.waarde||0); addQ(k,x); }
+      for(const k of [s+'§'+o+'|'+c]){ v[k]=(v[k]||0)+(x.waarde||0); addQ(k,x); if(x.prijs!=null) (pr[k]=pr[k]||new Set()).add(x.prijs); }
+      v['§tot|'+c]=(v['§tot|'+c]||0)+(x.waarde||0);
+    } });
   const prTxt = k => { const p=[...(pr[k]||[])].sort((a,b)=>a-b); return !p.length ? '–' : p.length===1 ? eur(p[0]) : `${eur(p[0])} – ${eur(p[p.length-1])}`; };
-  const qTxt = k => q[k] ? Object.entries(q[k]).map(([e,n])=>`${nf(n)} ${esc(e)}`).join(' + ') : '';
-  PIV = { r, colOf, l };
-  const cel = (k,ps,po,c,cls='') => v[k] ? `<td class="r klik ${cls}" data-ps="${esc(ps)}" data-po="${esc(po)}" data-pc="${esc(c)}">${prijsMode ? (po ? prTxt(k) : '') : eur0(v[k])}</td>` : '<td class="nul">–</td>';
-  $('pZt').textContent = (prijsMode ? 'Stuksprijs' : 'Totaal') + (l ? ` per soort en afdeling – ${locName(l)}` : ' per soort en locatie');
+  const qTxt = (k,alleenEen) => { const e=Object.entries(q[k]||{}); if(!e.length || (alleenEen && e.length>1)) return ''; return e.map(([u,n])=>`${nf(n)} ${esc(u)}`).join(' + '); };
+  PIV = { r, l };
+  const inhoud = (k,po) => prijsMode ? (po ? prTxt(k) : '') : aantalMode ? qTxt(k, !po) : eur0(v[k]);
+  const cel = (k,ps,po,c,cls='') => v[k]!=null ? `<td class="r klik ${cls}" data-ps="${esc(ps)}" data-po="${esc(po)}" data-pc="${esc(c.id||c)}">${inhoud(k,po)}</td>` : `<td class="nul ${cls}">–</td>`;
+  const ccls = c => c.ltot ? 'ltot' : '';
+  $('pZt').textContent = (prijsMode ? 'Stuksprijs' : aantalMode ? 'Aantal' : 'Totaal') + (l ? ` per soort en afdeling – ${locName(l)}` : ' per soort en locatie');
   if(!r.length){ $('pZ').innerHTML='<tr><td class="muted">Niets gevonden.</td></tr>'; return; }
-  let h = '<thead><tr><th>Soort / object</th>'+cols.map(c=>`<th class="r">${esc(c)}</th>`).join('')+'<th class="r">Totaal</th></tr></thead><tbody>';
+  let h = '<thead>';
+  const tweeRij = !l && groepen.some(g=>g.open);
+  if(!l){
+    h += `<tr><th${tweeRij?' rowspan="2"':''}>Soort / object</th>` + groepen.map(g => g.open
+      ? `<th class="hkop open" colspan="${g.n}" data-loc="${esc(g.loc)}"><span class="pijl">◀</span>${esc(locName(g.loc))}</th>`
+      : `<th class="r ${kanOpen(g.loc)?'hkop':''}"${tweeRij?' rowspan="2"':''} data-loc="${esc(g.loc)}">${kanOpen(g.loc)?'<span class="pijl">▶</span>':''}${esc(locName(g.loc))}</th>`).join('') + `<th class="r"${tweeRij?' rowspan="2"':''}>Totaal</th></tr>`;
+    if(tweeRij) h += '<tr>' + cols.filter(c=>c.id.startsWith('A|')||c.ltot).map(c=>`<th class="r asub ${ccls(c)}">${esc(c.label)}</th>`).join('') + '</tr>';
+  } else h += '<tr><th>Soort / object</th>'+cols.map(c=>`<th class="r">${esc(c.label)}</th>`).join('')+'<th class="r">Totaal</th></tr>';
+  h += '</thead><tbody>';
   rows.forEach(s=>{
     const objs = [...new Set(r.filter(x=>sOf(x)===s).map(objKey))].sort((a,b)=>a.localeCompare(b,'nl'));
     const open = PIVOPEN.has(s) || zoek;
-    h += `<tr class="psoort"><td class="ptog" data-s="${esc(s)}"><span class="pijl">${open?'▼':'▶'}</span>${esc(s)} <span class="aantal">(${objs.length})</span></td>`+cols.map(c=>cel(s+'|'+c,s,'',c)).join('')+cel(s+'|*',s,'','*','tot')+'</tr>';
+    h += `<tr class="psoort"><td class="ptog" data-s="${esc(s)}"><span class="pijl">${open?'▼':'▶'}</span>${esc(s)} <span class="aantal">(${objs.length})</span></td>`+cols.map(c=>cel(s+'|'+c.id,s,'',c,ccls(c))).join('')+cel(s+'|*',s,'','*','tot')+'</tr>';
     if(open) objs.forEach(o=>{
       const naam = (r.find(x=>sOf(x)===s && objKey(x)===o)||{}).obj || objNaam(o);
-      h += `<tr class="pobj"><td>${esc(naam)}</td>`+cols.map(c=>cel(s+'§'+o+'|'+c,s,o,c)).join('')+cel(s+'§'+o+'|*',s,o,'*','tot')+'</tr>';
+      h += `<tr class="pobj"><td>${esc(naam)}</td>`+cols.map(c=>cel(s+'§'+o+'|'+c.id,s,o,c,ccls(c))).join('')+cel(s+'§'+o+'|*',s,o,'*','tot')+'</tr>';
     });
   });
-  const ct = c => rows.reduce((t,s)=>t+(v[s+'|'+c]||0),0);
-  h += prijsMode ? '</tbody>' : '</tbody><tfoot><tr class="tot"><td>Totaal</td>'+cols.map(c=>`<td class="r klik" data-ps="*" data-po="" data-pc="${esc(c)}">${eur0(ct(c))}</td>`).join('')+`<td class="r klik" data-ps="*" data-po="" data-pc="*">${eur0(sum(r,x=>x.waarde))}</td></tr></tfoot>`;
+  h += (prijsMode||aantalMode) ? '</tbody>' : '</tbody><tfoot><tr class="tot"><td>Totaal</td>'+cols.map(c=>`<td class="r klik ${ccls(c)}" data-ps="*" data-po="" data-pc="${esc(c.id)}">${eur0(v['§tot|'+c.id]||0)}</td>`).join('')+`<td class="r klik" data-ps="*" data-po="" data-pc="*">${eur0(sum(r,x=>x.waarde))}</td></tr></tfoot>`;
   $('pZ').innerHTML = h;
 }
-$('pZ').addEventListener('click', e=>{ const t=e.target.closest('td.ptog'); if(!t) return; const s=t.dataset.s; PIVOPEN.has(s)?PIVOPEN.delete(s):PIVOPEN.add(s); drawZ(); });
+$('pZ').addEventListener('click', e=>{
+  const k=e.target.closest('th.hkop'); if(k){ const loc=k.dataset.loc; PIVHOPEN.has(loc)?PIVHOPEN.delete(loc):PIVHOPEN.add(loc); drawZ(); return; }
+  const t=e.target.closest('td.ptog'); if(!t) return; const s=t.dataset.s; PIVOPEN.has(s)?PIVOPEN.delete(s):PIVOPEN.add(s); drawZ(); });
 $('pivOpen').onclick = () => { D.bez.forEach(x=>PIVOPEN.add(x.sub||'Overig')); drawZ(); };
 $('pivDicht').onclick = () => { PIVOPEN.clear(); drawZ(); };
-document.querySelectorAll('#pivMode button').forEach(b=>b.onclick=()=>{ PIVMODE=b.dataset.m; try{localStorage.setItem('pivmode',PIVMODE)}catch(e){} if(PIVMODE==='prijs' && !PIVOPEN.size) D.bez.forEach(x=>PIVOPEN.add(x.sub||'Overig')); drawZ(); });
+document.querySelectorAll('#pivMode button').forEach(b=>b.onclick=()=>{ PIVMODE=b.dataset.m; try{localStorage.setItem('pivmode',PIVMODE)}catch(e){} if(PIVMODE!=='waarde' && !PIVOPEN.size) D.bez.forEach(x=>PIVOPEN.add(x.sub||'Overig')); drawZ(); });
 
 // ---------- contacten ----------
 const norm = v => String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');
