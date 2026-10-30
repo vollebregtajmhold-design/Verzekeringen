@@ -181,7 +181,7 @@ button.fbtn.leeg{background:#fff;color:#2e6b47;border:1px dashed #2e6b47}
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.27</span>
+  <span class="versie" title="Versie">v1.28</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="expBtn" hidden title="Alle gegevens downloaden als back-up">⬇ Back-up</button>
@@ -246,7 +246,7 @@ button.fbtn.leeg{background:#fff;color:#2e6b47;border:1px dashed #2e6b47}
       <button class="btn add" data-add="bez">+ Toevoegen</button>
       <button type="button" class="btn klein" id="docBtn" title="Maak een overzicht zoals de polis, om af te drukken of als PDF te bewaren">📄 Polisdocument</button>
     </div>
-    <div class="card tw"><h2><span id="pZt">Totaal per soort en afdeling</span> <span style="float:right"><span id="pivMode" class="schakel" style="float:none;margin-right:8px"><button type="button" data-m="waarde">Waarde</button><button type="button" data-m="prijs">Stuksprijs</button><button type="button" data-m="aantal">Aantal</button></span><button type="button" class="btn klein" id="pivOpen">▼ Alles open</button> <button type="button" class="btn klein" id="pivDicht">▶ Alles dicht</button></span></h2><table id="pZ" class="piv"></table></div>
+    <div class="card tw"><h2><span id="pZt">Totaal per soort en afdeling</span> <span style="float:right"><span id="pivMode" class="schakel" style="float:none;margin-right:8px"><button type="button" data-m="waarde">Waarde</button><button type="button" data-m="prijs">Stuksprijs</button><button type="button" data-m="aantal">Aantal</button><button type="button" data-m="promille">Premie ‰</button><button type="button" data-m="premie">Premie €</button></span><button type="button" class="btn klein" id="pivOpen">▼ Alles open</button> <button type="button" class="btn klein" id="pivDicht">▶ Alles dicht</button></span></h2><table id="pZ" class="piv"></table></div>
     <div class="card tw" hidden><h2>Alle objecten <span style="float:right"><button class="btn klein" id="zOpen">▼ Alles open</button> <button class="btn klein" id="zDicht">▶ Alles dicht</button></span></h2><table id="tZ"></table></div>
   </section>
 
@@ -441,30 +441,33 @@ function renderInfo(){
   const groep = x => perObj ? objKey(x) : afdNaam(x.afd);
   const L = {}; items.forEach(x=>{ const l=x.loc||'?', g=groep(x); ((L[l]=L[l]||{})[g]=L[l][g]||[]).push(x); });
   const hoev = it => { const q={}; it.forEach(x=>{ if(x.aantal==null) return; const e=((x.eenh||'').trim()||'stuks').toLowerCase().replace(/^stuk$/,'stuks'); q[e]=(q[e]||0)+x.aantal; }); return Object.entries(q).map(([e,n])=>nf(n)+' '+e).join(' + '); };
-  let h = `<table class="info"><thead><tr><th>${perObj?'Object / afdeling':'Object'}</th>${veelSoort?'<th>Soort</th>':''}<th class="r">Aantal</th><th>Eenheid</th><th class="r">Prijs</th><th class="r">Waarde</th>${EDIT?'<th></th>':''}</tr></thead><tbody>`;
+  let h = `<table class="info"><thead><tr><th>${perObj?'Object / afdeling':'Object'}</th>${veelSoort?'<th>Soort</th>':''}<th class="r">Aantal</th><th>Eenheid</th><th class="r">Prijs</th><th class="r">Waarde</th><th class="r">Premie ‰</th><th class="r">Premie €</th>${EDIT?'<th></th>':''}</tr></thead><tbody>`;
   const ex = EDIT?'<td></td>':'';
+  const pE = x => (x.promille!=null&&x.waarde!=null)?x.waarde*x.promille/1000:null;
+  const pc = a => `<td></td><td class="r">${eur(sum(a,pE))}</td>`;
+  const pcel = x => `<td class="r">${x.promille!=null?nf(x.promille):''}</td><td class="r">${pE(x)!=null?eur(pE(x)):''}</td>`;
   $('infoAdd').hidden = !EDIT;
   for(const loc of Object.keys(L).sort((a,b)=>a.localeCompare(b,'nl',{numeric:true}))){
     const kL='L:'+loc, oL=O.has(kL), all=Object.values(L[loc]).flat();
     const nAfd = new Set(all.map(x=>afdNaam(x.afd))).size;
     const gs = Object.keys(L[loc]).sort(perObj?(a,b)=>a.localeCompare(b,'nl'):afdSort);
-    h += `<tr class="itog i1" data-k="${esc(kL)}"><td colspan="${nk-1}"><span class="pijl">${oL?'▼':'▶'}</span>${esc(locName(loc))}<span class="aantal">(${nAfd} afdeling${nAfd>1?'en':''}, ${all.length} object${all.length>1?'en':''})</span></td><td class="r">${eur0(sum(all,x=>x.waarde))}</td>${ex}</tr>`;
+    h += `<tr class="itog i1" data-k="${esc(kL)}"><td colspan="${nk-1}"><span class="pijl">${oL?'▼':'▶'}</span>${esc(locName(loc))}<span class="aantal">(${nAfd} afdeling${nAfd>1?'en':''}, ${all.length} object${all.length>1?'en':''})</span></td><td class="r">${eur0(sum(all,x=>x.waarde))}</td>${pc(all)}${ex}</tr>`;
     if(!oL) continue;
     for(const g of gs){
       const kG=(perObj?'O:':'A:')+loc+'|'+g, oG=O.has(kG), it=L[loc][g];
       if(perObj){
         const naam = it[0].obj||'?';
-        h += `<tr class="itog i2" data-k="${esc(kG)}"><td colspan="${veelSoort?2:1}"><span class="pijl">${oG?'▼':'▶'}</span>${esc(naam)}<span class="aantal">(${it.length} afdeling${it.length>1?'en':''})</span></td><td class="r" colspan="2">${hoev(it)}</td><td></td><td class="r">${eur0(sum(it,x=>x.waarde))}</td>${ex}</tr>`;
+        h += `<tr class="itog i2" data-k="${esc(kG)}"><td colspan="${veelSoort?2:1}"><span class="pijl">${oG?'▼':'▶'}</span>${esc(naam)}<span class="aantal">(${it.length} afdeling${it.length>1?'en':''})</span></td><td class="r" colspan="2">${hoev(it)}</td><td></td><td class="r">${eur0(sum(it,x=>x.waarde))}</td>${pc(it)}${ex}</tr>`;
         if(!oG) continue;
-        it.sort((a,b)=>afdSort(afdNaam(a.afd),afdNaam(b.afd))).forEach(x=> h += `<tr class="i3"><td>${esc(afdNaam(x.afd))}${x.opm?` <span class="muted">– ${esc(x.opm)}</span>`:''}${lk(x.link)}${fk('bez',x)}</td>${veelSoort?`<td class="muted">${esc(x.sub)}</td>`:''}<td class="r">${nf(x.aantal)}</td><td class="muted">${esc(x.eenh)}</td><td class="r">${eur(x.prijs)}</td><td class="r">${eur0(x.waarde)}</td>${EDIT?`<td>${eb('bez',x.id)}</td>`:''}</tr>`);
+        it.sort((a,b)=>afdSort(afdNaam(a.afd),afdNaam(b.afd))).forEach(x=> h += `<tr class="i3"><td>${esc(afdNaam(x.afd))}${x.opm?` <span class="muted">– ${esc(x.opm)}</span>`:''}${lk(x.link)}${fk('bez',x)}</td>${veelSoort?`<td class="muted">${esc(x.sub)}</td>`:''}<td class="r">${nf(x.aantal)}</td><td class="muted">${esc(x.eenh)}</td><td class="r">${eur(x.prijs)}</td><td class="r">${eur0(x.waarde)}</td>${pcel(x)}${EDIT?`<td>${eb('bez',x.id)}</td>`:''}</tr>`);
       } else {
-        h += `<tr class="itog i2" data-k="${esc(kG)}"><td colspan="${nk-1}"><span class="pijl">${oG?'▼':'▶'}</span>${esc(g)}<span class="aantal">(${it.length})</span></td><td class="r">${eur0(sum(it,x=>x.waarde))}</td>${ex}</tr>`;
+        h += `<tr class="itog i2" data-k="${esc(kG)}"><td colspan="${nk-1}"><span class="pijl">${oG?'▼':'▶'}</span>${esc(g)}<span class="aantal">(${it.length})</span></td><td class="r">${eur0(sum(it,x=>x.waarde))}</td>${pc(it)}${ex}</tr>`;
         if(!oG) continue;
-        it.sort((a,b)=>(b.waarde||0)-(a.waarde||0)).forEach(x=> h += `<tr class="i3 objklik" data-o="${esc(objKey(x))}" title="Klik: objecten bij elkaar zetten"><td>${esc(x.obj)}${x.opm?` <span class="muted">– ${esc(x.opm)}</span>`:''}${lk(x.link)}${fk('bez',x)}</td>${veelSoort?`<td class="muted">${esc(x.sub)}</td>`:''}<td class="r">${nf(x.aantal)}</td><td class="muted">${esc(x.eenh)}</td><td class="r">${eur(x.prijs)}</td><td class="r">${eur0(x.waarde)}</td>${EDIT?`<td>${eb('bez',x.id)}</td>`:''}</tr>`);
+        it.sort((a,b)=>(b.waarde||0)-(a.waarde||0)).forEach(x=> h += `<tr class="i3 objklik" data-o="${esc(objKey(x))}" title="Klik: objecten bij elkaar zetten"><td>${esc(x.obj)}${x.opm?` <span class="muted">– ${esc(x.opm)}</span>`:''}${lk(x.link)}${fk('bez',x)}</td>${veelSoort?`<td class="muted">${esc(x.sub)}</td>`:''}<td class="r">${nf(x.aantal)}</td><td class="muted">${esc(x.eenh)}</td><td class="r">${eur(x.prijs)}</td><td class="r">${eur0(x.waarde)}</td>${pcel(x)}${EDIT?`<td>${eb('bez',x.id)}</td>`:''}</tr>`);
       }
     }
   }
-  h += `</tbody><tfoot><tr><td colspan="${nk-1}">Totaal (${items.length} objecten)</td><td class="r">${eur0(sum(items,x=>x.waarde))}</td>${ex}</tr></tfoot></table>`;
+  h += `</tbody><tfoot><tr><td colspan="${nk-1}">Totaal (${items.length} objecten)</td><td class="r">${eur0(sum(items,x=>x.waarde))}</td>${pc(items)}${ex}</tr></tfoot></table>`;
   $('infoInhoud').innerHTML = h;
   if(INFO.hl){ const t=$('infoInhoud').querySelector(`tr.i2[data-k$="|${CSS.escape(INFO.hl)}"]`); if(t){ t.classList.add('hl'); t.scrollIntoView({block:'center'}); } INFO.hl=null; }
 }
@@ -502,23 +505,25 @@ function drawPivot(r, l){
     if(open){ const a=afdsVan(loc); a.forEach(x=>cols.push({id:'A|'+loc+'|'+x, label:x})); cols.push({id:'L|'+loc, label:'Totaal', ltot:true}); groepen.push({loc, n:a.length+1, open:true}); }
     else { cols.push({id:'L|'+loc, label:locName(loc)}); groepen.push({loc, n:1, open:false}); }
   });
-  const mode = PIVMODE, prijsMode = mode==='prijs', aantalMode = mode==='aantal';
+  const mode = PIVMODE, prijsMode = mode==='prijs', aantalMode = mode==='aantal', pmMode = mode==='promille', premMode = mode==='premie';
   document.querySelectorAll('#pivMode button').forEach(b=>b.classList.toggle('on', b.dataset.m===mode));
-  const v = {}, q = {}, pr = {};
+  const v = {}, q = {}, pr = {}, pm = {}, vp = {};
+  const pE = x => (x.promille!=null&&x.waarde!=null)?x.waarde*x.promille/1000:0;
   const addQ = (k,x) => { if(x.aantal==null) return; const e=((x.eenh||'').trim()||'stuks').toLowerCase().replace(/^stuk$/,'stuks'); (q[k]=q[k]||{}); q[k][e]=(q[k][e]||0)+x.aantal; };
   r.forEach(x=>{ const s=sOf(x), o=objKey(x), loc=x.loc||'?';
     for(const c of ['*','L|'+loc,'A|'+loc+'|'+afdNaam(x.afd)]){
-      for(const k of [s+'|'+c]){ v[k]=(v[k]||0)+(x.waarde||0); addQ(k,x); }
-      for(const k of [s+'§'+o+'|'+c]){ v[k]=(v[k]||0)+(x.waarde||0); addQ(k,x); if(x.prijs!=null) (pr[k]=pr[k]||new Set()).add(x.prijs); }
-      v['§tot|'+c]=(v['§tot|'+c]||0)+(x.waarde||0);
+      for(const k of [s+'|'+c]){ v[k]=(v[k]||0)+(x.waarde||0); addQ(k,x); vp[k]=(vp[k]||0)+pE(x); }
+      for(const k of [s+'§'+o+'|'+c]){ v[k]=(v[k]||0)+(x.waarde||0); addQ(k,x); if(x.prijs!=null) (pr[k]=pr[k]||new Set()).add(x.prijs); if(x.promille!=null) (pm[k]=pm[k]||new Set()).add(x.promille); vp[k]=(vp[k]||0)+pE(x); }
+      v['§tot|'+c]=(v['§tot|'+c]||0)+(x.waarde||0); vp['§tot|'+c]=(vp['§tot|'+c]||0)+pE(x);
     } });
   const prTxt = k => { const p=[...(pr[k]||[])].sort((a,b)=>a-b); return !p.length ? '–' : p.length===1 ? eur(p[0]) : `${eur(p[0])} – ${eur(p[p.length-1])}`; };
   const qTxt = (k,alleenEen) => { const e=Object.entries(q[k]||{}); if(!e.length || (alleenEen && e.length>1)) return ''; return e.map(([u,n])=>`${nf(n)} ${esc(u)}`).join(' + '); };
   PIV = { r, l };
-  const inhoud = (k,po) => prijsMode ? (po ? prTxt(k) : '') : aantalMode ? qTxt(k, !po) : eur0(v[k]);
+  const pmTxt = k => { const p=[...(pm[k]||[])].sort((a,b)=>a-b); return !p.length ? '–' : p.length===1 ? nf(p[0])+' ‰' : `${nf(p[0])} – ${nf(p[p.length-1])} ‰`; };
+  const inhoud = (k,po) => prijsMode ? (po ? prTxt(k) : '') : aantalMode ? qTxt(k, !po) : pmMode ? (po ? pmTxt(k) : '') : premMode ? eur(vp[k]||0) : eur0(v[k]);
   const cel = (k,ps,po,c,cls='') => v[k]!=null ? `<td class="r klik ${cls}" data-ps="${esc(ps)}" data-po="${esc(po)}" data-pc="${esc(c.id||c)}">${inhoud(k,po)}</td>` : `<td class="nul ${cls}">–</td>`;
   const ccls = c => c.ltot ? 'ltot' : '';
-  $('pZt').textContent = (prijsMode ? 'Stuksprijs' : aantalMode ? 'Aantal' : 'Totaal') + (l ? ` per soort en afdeling – ${locName(l)}` : ' per soort en locatie');
+  $('pZt').textContent = (prijsMode ? 'Stuksprijs' : aantalMode ? 'Aantal' : pmMode ? 'Premie per 1000' : premMode ? 'Premie in euro' : 'Totaal') + (l ? ` per soort en afdeling – ${locName(l)}` : ' per soort en locatie');
   if(!r.length){ $('pZ').innerHTML='<tr><td class="muted">Niets gevonden.</td></tr>'; return; }
   let h = '<thead>';
   const tweeRij = !l && groepen.some(g=>g.open);
@@ -538,7 +543,8 @@ function drawPivot(r, l){
       h += `<tr class="pobj"><td>${esc(naam)}</td>`+cols.map(c=>cel(s+'§'+o+'|'+c.id,s,o,c,ccls(c))).join('')+cel(s+'§'+o+'|*',s,o,'*','tot')+'</tr>';
     });
   });
-  h += (prijsMode||aantalMode) ? '</tbody>' : '</tbody><tfoot><tr class="tot"><td>Totaal</td>'+cols.map(c=>`<td class="r klik ${ccls(c)}" data-ps="*" data-po="" data-pc="${esc(c.id)}">${eur0(v['§tot|'+c.id]||0)}</td>`).join('')+`<td class="r klik" data-ps="*" data-po="" data-pc="*">${eur0(sum(r,x=>x.waarde))}</td></tr></tfoot>`;
+  const tv = id => premMode ? eur(vp['§tot|'+id]||0) : eur0(v['§tot|'+id]||0);
+  h += (prijsMode||aantalMode||pmMode) ? '</tbody>' : '</tbody><tfoot><tr class="tot"><td>Totaal</td>'+cols.map(c=>`<td class="r klik ${ccls(c)}" data-ps="*" data-po="" data-pc="${esc(c.id)}">${tv(c.id)}</td>`).join('')+`<td class="r klik" data-ps="*" data-po="" data-pc="*">${premMode?eur(sum(r,pE)):eur0(sum(r,x=>x.waarde))}</td></tr></tfoot>`;
   $('pZ').innerHTML = h;
 }
 $('pZ').addEventListener('click', e=>{
@@ -546,7 +552,7 @@ $('pZ').addEventListener('click', e=>{
   const t=e.target.closest('td.ptog'); if(!t) return; const s=t.dataset.s; PIVOPEN.has(s)?PIVOPEN.delete(s):PIVOPEN.add(s); drawZ(); });
 $('pivOpen').onclick = () => { D.bez.forEach(x=>PIVOPEN.add(x.sub||'Overig')); drawZ(); };
 $('pivDicht').onclick = () => { PIVOPEN.clear(); drawZ(); };
-document.querySelectorAll('#pivMode button').forEach(b=>b.onclick=()=>{ PIVMODE=b.dataset.m; try{localStorage.setItem('pivmode',PIVMODE)}catch(e){} if(PIVMODE!=='waarde' && !PIVOPEN.size) D.bez.forEach(x=>PIVOPEN.add(x.sub||'Overig')); drawZ(); });
+document.querySelectorAll('#pivMode button').forEach(b=>b.onclick=()=>{ PIVMODE=b.dataset.m; try{localStorage.setItem('pivmode',PIVMODE)}catch(e){} if(['prijs','aantal','promille'].includes(PIVMODE) && !PIVOPEN.size) D.bez.forEach(x=>PIVOPEN.add(x.sub||'Overig')); drawZ(); });
 
 // ---------- premie per 1000: eenmalig vullen vanuit de oude spreadsheet ----------
 const PROMILLE_START = {"bez-0": ["Belichting", 1.0], "bez-1": ["Betonpaden", 1.0], "bez-2": ["Constructie", 1.0], "bez-3": ["CV buizen", 1.0], "bez-4": ["Eb/vloed systeem", 1.0], "bez-5": ["Elektra", 1.0], "bez-6": ["Gevelluchting", 1.0], "bez-7": ["Gevelscherm", 1.0], "bez-8": ["Gietgoten", 1.0], "bez-9": ["Glas", 5.07], "bez-10": ["Luchting", 1.0], "bez-11": ["LVM", 1.0], "bez-12": ["Opruimingskosten", 1.0], "bez-13": ["Schermdoek", 1.0], "bez-14": ["Tafels", 1.0], "bez-15": ["ventilatoren", 1.0], "bez-16": ["Belichting", 1.0], "bez-17": ["Betonpaden", 1.0], "bez-18": ["Constructie", 1.0], "bez-19": ["CV buizen", 1.0], "bez-20": ["Drygair", 1.0], "bez-21": ["Elektra", 1.0], "bez-22": ["Gevelluchting", 1.0], "bez-23": ["Gevelscherm", 1.0], "bez-24": ["Gietgoten", 1.0], "bez-25": ["Glas", 5.07], "bez-26": ["Luchting", 1.0], "bez-27": ["LVM", 1.0], "bez-28": ["Opruimingskosten", 1.0], "bez-29": ["Schermdoek", 1.0], "bez-30": ["Tafels", 1.0], "bez-31": ["ventilatoren", 1.0], "bez-32": ["Betonpaden", 0.5], "bez-33": ["Constructie", 1.09], "bez-34": ["CV buizen", 0.545], "bez-36": ["Eb/vloed systeem", 1.0], "bez-37": ["Elektra", 1.09], "bez-40": ["Gietgoten", 1.0], "bez-41": ["Glas", 5.07], "bez-42": ["Luchting", 0.5], "bez-43": ["LVM", 0.5], "bez-44": ["Opruimingskosten", 0.5], "bez-45": ["Schermdoek", 2.18], "bez-46": ["Tafels", 1.0], "bez-47": ["ventilatoren", 0.5], "bez-48": ["Watersilo's buiten", 1.0], "bez-50": ["Betonvloer", 1.0], "bez-51": ["Constructie", 1.0], "bez-52": ["Elektra", 1.0], "bez-53": ["Glas", 5.07], "bez-54": ["Hydrofor + silo binnen", 1.0], "bez-55": ["Luchting", 1.0], "bez-56": ["Overheaddeuren", 1.0], "bez-57": ["Schermdoek", 1.0], "bez-58": ["Verspeenlijn TTA", 1.0], "bez-59": ["Vloerverwarming", 1.0], "bez-60": ["Verdeelstuk", 1.0], "bez-61": ["Betonpaden", 1.0], "bez-62": ["Constructie", 1.0], "bez-63": ["CV buizen", 1.0], "bez-64": ["CV slangen", 1.0], "bez-65": ["Eb/vloed systeem", 1.0], "bez-66": ["Elektra", 1.0], "bez-67": ["Gevelluchting", 1.0], "bez-68": ["Gevelscherm", 1.0], "bez-69": ["Gietgoten", 1.0], "bez-70": ["Glas", 1.0], "bez-71": ["Luchting", 1.0], "bez-72": ["LVM", 1.0], "bez-73": ["Opruimingskosten", 1.0], "bez-74": ["Schermdoek", 1.0], "bez-75": ["Tafels", 1.0], "bez-76": ["ventilatoren", 1.0], "bez-77": ["Betonpaden", 1.0], "bez-78": ["Constructie", 1.0], "bez-79": ["CV buizen", 1.0], "bez-80": ["CV slangen", 1.0], "bez-81": ["Drygair", 1.0], "bez-82": ["Eb/vloed systeem", 1.0], "bez-83": ["Elektra", 1.0], "bez-84": ["Gevelluchting", 1.0], "bez-85": ["Gevelscherm", 1.0], "bez-86": ["Gietgoten", 1.0], "bez-87": ["Glas", 1.0], "bez-88": ["Luchting", 1.0], "bez-89": ["LVM", 1.0], "bez-90": ["Opruimingskosten", 1.0], "bez-91": ["Schermdoek", 1.0], "bez-92": ["Tafels", 1.0], "bez-93": ["ventilatoren", 1.0], "bez-94": ["PEN-aansluiting", 1.0], "bez-95": ["Trafostation", 1.0], "bez-96": ["Watersilo's buiten", 1.0], "bez-98": ["Betonvloer", 1.0], "bez-99": ["Constructie", 1.0], "bez-100": ["Dockshelter", 1.0], "bez-101": ["Elektra", 1.0], "bez-102": ["Glas", 1.0], "bez-103": ["Kantine / toiletten", 1.0], "bez-104": ["Kantoorelektronica", 1.0], "bez-105": ["Klimaatcomputer ISII", 1.0], "bez-106": ["Luchting", 1.0], "bez-107": ["Oppotmachine", 1.0], "bez-108": ["Overheaddeuren", 1.0], "bez-109": ["Schermdoek", 1.0], "bez-110": ["Betonvloer", 1.0], "bez-111": ["Boiler", 1.0], "bez-112": ["Buffertank", 1.0], "bez-113": ["Constructie", 1.0], "bez-114": ["Drukexpansie", 1.0], "bez-115": ["Elektra", 1.0], "bez-116": ["Gasreduceerstation", 1.0], "bez-117": ["Glas", 1.0], "bez-118": ["Hydrofor + silo binnen", 1.0], "bez-119": ["Ketelinstalatie", 1.0], "bez-120": ["Luchting", 1.0], "bez-121": ["Schermdoek", 1.0], "bez-122": ["Verdeelstuk", 1.0], "bez-123": ["wkk", 1.0], "bez-124": ["Betonpaden", 1.0], "bez-125": ["Constructie", 1.0], "bez-126": ["CV buizen", 1.0], "bez-127": ["Eb/vloed systeem", 1.0], "bez-128": ["Elektra", 1.0], "bez-129": ["Gevelluchting", 1.0], "bez-130": ["Gevelscherm", 1.0], "bez-131": ["Gietgoten", 1.0], "bez-132": ["Glas", 1.0], "bez-133": ["Luchting", 1.0], "bez-134": ["LVM", 1.0], "bez-135": ["Opruimingskosten", 1.0], "bez-136": ["Schermdoek", 1.0], "bez-137": ["Tafels", 1.0], "bez-138": ["ventilatoren", 1.0], "bez-139": ["Betonpaden", 1.0], "bez-140": ["Constructie", 1.0], "bez-141": ["CV buizen", 1.0], "bez-142": ["Eb/vloed systeem", 1.0], "bez-143": ["Elektra", 1.0], "bez-144": ["Gevelluchting", 1.0], "bez-145": ["Gevelscherm", 1.0], "bez-146": ["Gietgoten", 1.0], "bez-147": ["Glas", 1.0], "bez-148": ["Luchting", 1.0], "bez-149": ["LVM", 1.0], "bez-150": ["Opruimingskosten", 1.0], "bez-151": ["Schermdoek", 1.0], "bez-152": ["Tafels", 1.0], "bez-153": ["ventilatoren", 1.0], "bez-154": ["Betonpaden", 1.0], "bez-155": ["Constructie", 1.0], "bez-156": ["CV buizen", 1.0], "bez-157": ["Eb/vloed systeem", 1.0], "bez-158": ["Elektra", 1.0], "bez-159": ["Gevelluchting", 1.0], "bez-160": ["Gevelscherm", 1.0], "bez-161": ["Gietgoten", 1.0], "bez-162": ["Glas", 1.0], "bez-163": ["Luchting", 1.0], "bez-164": ["LVM", 1.0], "bez-165": ["Opruimingskosten", 1.0], "bez-166": ["Schermdoek", 1.0], "bez-167": ["Tafels", 1.0], "bez-168": ["ventilatoren", 1.0], "bez-169": ["Betonpaden", 1.0], "bez-170": ["Constructie", 1.0], "bez-171": ["CV buizen", 1.0], "bez-172": ["Eb/vloed systeem", 1.0], "bez-173": ["Elektra", 1.0], "bez-174": ["Gevelluchting", 1.0], "bez-175": ["Gevelscherm", 1.0], "bez-176": ["Gietgoten", 1.0], "bez-177": ["Glas", 1.0], "bez-178": ["Luchting", 1.0], "bez-179": ["LVM", 1.0], "bez-180": ["Opruimingskosten", 1.0], "bez-181": ["Schermdoek", 1.0], "bez-182": ["Tafels", 1.0], "bez-183": ["Tussengevelscherm", 1.0], "bez-184": ["ventilatoren", 1.0], "bez-185": ["Betonpaden", 1.0], "bez-186": ["Constructie", 1.0], "bez-187": ["CV buizen", 1.0], "bez-188": ["CV slangen", 1.0], "bez-189": ["Eb/vloed systeem", 1.0], "bez-190": ["Elektra", 1.0], "bez-191": ["Gevelluchting", 1.0], "bez-192": ["Gevelscherm", 1.0], "bez-193": ["Gietgoten", 1.0], "bez-194": ["Glas", 1.0], "bez-195": ["Luchting", 1.0], "bez-196": ["LVM", 1.0], "bez-197": ["Opruimingskosten", 1.0], "bez-198": ["Schermdoek", 1.0], "bez-199": ["Tafels", 1.0], "bez-200": ["ventilatoren", 1.0], "bez-201": ["PEN-aansluiting", 1.0], "bez-202": ["Watersilo's buiten", 1.0], "bez-204": ["Betonvloer", 1.0], "bez-205": ["Constructie", 1.0], "bez-206": ["Dockshelter", 1.0], "bez-207": ["Elektra", 1.0], "bez-208": ["Glas", 1.0], "bez-209": ["Hydrofor + silo binnen", 1.0], "bez-210": ["Kantine / toiletten", 1.0], "bez-211": ["Kantoorelektronica", 1.0], "bez-212": ["klimaatcel", 1.0], "bez-213": ["Klimaatcomputer ISII", 1.0], "bez-214": ["Luchting", 1.0], "bez-215": ["Overheaddeuren", 1.0], "bez-216": ["Schermdoek", 1.0], "bez-217": ["Vloerverwarming", 1.0], "bez-218": ["Zaadkast + teller", 1.0], "bez-219": ["Zaailijn", 1.0], "bez-220": ["Betonvloer", 1.0], "bez-221": ["Cascade keteltjes", 1.0], "bez-222": ["Constructie", 1.0], "bez-223": ["Drukexpansie", 1.0], "bez-224": ["Elektra", 1.0], "bez-225": ["Gasreduceerstation", 1.0], "bez-226": ["Glas", 1.0], "bez-227": ["Luchting", 1.0], "bez-228": ["Overheaddeuren", 1.0], "bez-229": ["Schermdoek", 1.0], "bez-230": ["Verdeelstuk", 1.0], "bez-231": ["Acculader heftruck", 1.0], "bez-232": ["Acculader klein", 1.0], "bez-233": ["Aluminium-karren", 1.0], "bez-234": ["CC-karren 100cc, 1000pl", 1.0], "bez-235": ["Donkey 1x", 1.0], "bez-236": ["Fert-o-ject bemesting 3x", 1.0], "bez-237": ["Fust /verpakking/grondstoffen", 1.0], "bez-238": ["Heftruck oranje 1x", 1.0], "bez-239": ["Heftruck Rood 1x", 1.0], "bez-240": ["Hogedrukcleaner", 1.0], "bez-241": ["Meststoffen/bestrijdingsmiddelen.", 1.0], "bez-242": ["Pompwagens 2x", 1.0], "bez-243": ["Spuitkar 400 liter 2x", 1.0], "bez-244": ["Styropor fust (50000*0,80)", 1.0], "bez-245": ["VBA-karren 28x", 1.0], "bez-246": ["Veegmachines", 1.0]};
@@ -580,17 +586,17 @@ function maakDocument(){
   locs.forEach((loc,li)=>{
     let nr=0, lW=0, lP=0;
     body += `<section><div class="adres"><b>${li+1}</b>&nbsp; Adres <span contenteditable="true" data-loc="${esc(loc)}" class="edit">${esc(adresVan(loc))}</span></div>
-    <table><thead><tr><th class="nr">Nr</th><th>Verzekerde objecten</th><th class="c">Dekking</th><th class="r">Opperv/<br>aantal</th><th class="r">Bedrag<br>(per eenh.)</th><th class="r">Premie<br>(per 1000)</th><th class="r">Verzekerd<br>bedrag</th><th class="r">Premie<br>in EUR</th></tr></thead>`;
+    <table><thead><tr><th class="nr">Nr</th><th>Verzekerde objecten</th><th class="c">Dekking</th><th class="r">Opperv/<br>aantal</th><th class="r">Bedrag<br>(per eenh.)</th><th class="r">Verzekerd<br>bedrag</th><th class="r lijn">Premie<br>(per 1000)</th><th class="r">Premie<br>in EUR</th></tr></thead>`;
     Object.keys(L[loc]).sort(afdSort).forEach(afd=>{
       const it = L[loc][afd].slice().sort((a,b)=>String(a.sub).localeCompare(String(b.sub),'nl')||String(a.obj).localeCompare(String(b.obj),'nl'));
       let aW=0, aP=0;
       body += `<tbody><tr class="afd"><td></td><td colspan="7">${esc(afd)}</td></tr>`;
       it.forEach(x=>{ nr++; const p=premie(x); aW+=x.waarde||0; aP+=p||0;
-        body += `<tr><td class="nr">${String(nr).padStart(3,'0')}</td><td>${esc(x.obj)}${x.opm?`<div class="sub">${esc(x.opm)}</div>`:''}</td><td class="c">${esc(x.dekking||'A')}</td><td class="r">${n0(x.aantal)}${x.eenh&&!/m²|m2/i.test(x.eenh)?' '+esc(x.eenh.toLowerCase()):''}</td><td class="r">${n2(x.prijs)}</td><td class="r">${x.promille!=null?n2(x.promille,5):''}</td><td class="r">${n2(x.waarde,0)}</td><td class="r">${p!=null?n2(p):''}</td></tr>`; });
-      body += `<tr class="stot"><td></td><td colspan="5">Subtotaal ${esc(afd)}</td><td class="r">${n2(aW,0)}</td><td class="r">${n2(aP)}</td></tr></tbody>`;
+        body += `<tr><td class="nr">${String(nr).padStart(3,'0')}</td><td>${esc(x.obj)}${x.opm?`<div class="sub">${esc(x.opm)}</div>`:''}</td><td class="c">${esc(x.dekking||'A')}</td><td class="r">${n0(x.aantal)}${x.eenh&&!/m²|m2/i.test(x.eenh)?' '+esc(x.eenh.toLowerCase()):''}</td><td class="r">${n2(x.prijs)}</td><td class="r">${n2(x.waarde,0)}</td><td class="r lijn">${x.promille!=null?n2(x.promille,5):''}</td><td class="r">${p!=null?n2(p):''}</td></tr>`; });
+      body += `<tr class="stot"><td></td><td colspan="4">Subtotaal ${esc(afd)}</td><td class="r">${n2(aW,0)}</td><td class="lijn"></td><td class="r">${n2(aP)}</td></tr></tbody>`;
       lW+=aW; lP+=aP;
     });
-    body += `<tfoot><tr><td></td><td colspan="5">Totaal ${esc(locName(loc))}</td><td class="r">${n2(lW,0)}</td><td class="r">${n2(lP)}</td></tr></tfoot></table></section>`;
+    body += `<tfoot><tr><td></td><td colspan="4">Totaal ${esc(locName(loc))}</td><td class="r">${n2(lW,0)}</td><td class="lijn"></td><td class="r">${n2(lP)}</td></tr></tfoot></table></section>`;
     tW+=lW; tP+=lP;
   });
   const filters = [ $('lZ').value?locName($('lZ').value):'', $('aZ').value, $('sZ').value, $('qZ').value?'zoek: '+$('qZ').value:'' ].filter(Boolean).join(' · ');
@@ -609,6 +615,8 @@ td{padding:2px 6px;vertical-align:top}
 .r{text-align:right;white-space:nowrap} .c{text-align:center} .nr{width:40px}
 .sub{color:#555;padding-left:14px}
 tr.afd td{padding-top:10px;font-weight:bold}
+.lijn{border-left:1px solid #000;padding-left:10px}
+body{max-width:1050px}
 tr.stot td{border-top:1px dotted #777;color:#333}
 tfoot td{border-top:1px solid #000;font-weight:bold;padding-top:4px}
 .eind{margin-top:10px;border-top:2px solid #000;padding-top:6px;font-weight:bold;display:flex;justify-content:space-between}
