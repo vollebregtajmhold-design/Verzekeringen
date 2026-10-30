@@ -163,6 +163,14 @@ table.piv .ltot{background:#e9f0eb;font-weight:700}
 table.piv th.ltot{background:#c4d8ca}
 .wl{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .wl a.doc{margin-left:auto;flex-shrink:0}
+button.fbtn{border:0;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;line-height:1.5;padding:1px 9px;border-radius:6px;color:#fff;background:#2e6b47;display:inline-flex;align-items:center;height:auto;width:auto;margin:0}
+button.fbtn.leeg{background:#fff;color:#2e6b47;border:1px dashed #2e6b47}
+.wl button.fbtn{margin-left:4px;flex-shrink:0}
+.flijst{list-style:none;padding:0;margin:0 0 6px}
+.flijst li{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #ddd}
+.flijst li .fn{flex:1;word-break:break-all}
+.flijst li .fm{color:#777;font-size:12px;white-space:nowrap}
+.flijst li button{font:inherit;font-size:13px;cursor:pointer;border:1px solid #999;border-radius:6px;background:#fff;padding:3px 10px}
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -173,7 +181,7 @@ table.piv th.ltot{background:#c4d8ca}
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.26</span>
+  <span class="versie" title="Versie">v1.27</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="expBtn" hidden title="Alle gegevens downloaden als back-up">⬇ Back-up</button>
@@ -262,6 +270,8 @@ table.piv th.ltot{background:#c4d8ca}
 <dialog id="dlg"><form id="frm" method="dialog"><h2 id="dlgTitel"></h2><div id="velden"></div>
 <div class="knoppen"><button class="btn" value="annuleer" formnovalidate>Annuleren</button><button class="btn blue" id="opslaan" value="ok">Opslaan</button></div></form></dialog>
 <dialog id="dlgInfo" class="breed"><form method="dialog"><h2 id="infoTitel"></h2><div id="infoInhoud" class="tw"></div><div class="knoppen"><span id="infoKnop" class="schakel" style="float:none"><button type="button" data-m="afd">Per afdeling</button><button type="button" data-m="obj">Per object</button></span><button type="button" class="btn klein" id="infoOpen">▼ Alles open</button><button type="button" class="btn klein" id="infoDicht">▶ Alles dicht</button><button type="button" class="btn add" id="infoAdd" hidden>+ Object toevoegen</button><span style="flex:1"></span><button class="btn blue">Sluiten</button></div></form></dialog>
+<dialog id="dlgFiles"><form method="dialog"><h2 id="filesTitel">Bestanden</h2><ul id="filesLijst" class="flijst"></ul>
+<div class="knoppen"><label class="btn add" id="filesUp">⬆ Bestand uploaden<input type="file" id="filesInput" multiple hidden></label><span style="flex:1"></span><button class="btn blue">Sluiten</button></div></form></dialog>
 <div id="toast" hidden></div>
 
 <script type="module">
@@ -269,10 +279,12 @@ import { firebaseConfig, beheerders } from './firebase-config.js';
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, doc, getDoc, writeBatch, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getStorage, ref as sRef, uploadBytes, getDownloadURL, deleteObject } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js';
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
 const KEYS = ['bedrijf','prive','priveNotes','bez','tijd','extra','contacten'];
 const $ = id => document.getElementById(id);
 let D = null, USER = null, EDIT = false, BEHEER = false;
@@ -286,6 +298,8 @@ const tag = v => v==='ja' ? '<span class="tag ja">Ja</span>' : v==='nee' ? '<spa
 const act = v => v==='ja' ? '<span class="tag act">Actie</span>' : v==='nee' ? '<span class="muted">Nee</span>' : '<span class="muted">–</span>';
 const lk = (u,t='Document') => u ? `<a class="doc" href="${esc(u)}" target="_blank" rel="noopener">📄 ${t}</a>` : '';
 const sum = (a,f) => a.reduce((t,x)=>t+(f(x)||0),0);
+const fk = (sec,x) => { const n=(x.files||[]).length; return n ? `<button type="button" class="doc fbtn" data-fsec="${sec}" data-fid="${esc(x.id)}" title="Bestanden">📎 ${n}</button>` : (EDIT&&BEHEER ? `<button type="button" class="doc fbtn leeg" data-fsec="${sec}" data-fid="${esc(x.id)}" title="Bestand uploaden">📎 +</button>` : ''); };
+const secVan = id => ['bedrijf','prive'].find(k=>D[k].some(x=>x.id===id));
 const eb = (sec,id) => `<span class="eb"><button type="button" data-edit="${sec}" data-id="${esc(id)}" title="Wijzigen">✏️</button><button type="button" data-del="${sec}" data-id="${esc(id)}" title="Verwijderen">🗑️</button></span>`;
 const withIds = (items, sec) => (items||[]).map((x,i) => x.id ? x : {...x, id: sec+'-'+i});
 const newId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now()+'-'+Math.random().toString(36).slice(2));
@@ -329,19 +343,19 @@ function render(){
   const byMij={}; alle.forEach(x=>{ if(x.premie){const k=x.mij||'Onbekend'; byMij[k]=(byMij[k]||0)+x.premie;} }); bars('barsMij',byMij);
   const byLoc={}; D.bez.forEach(x=>{ const k=locName(x.loc||'?'); byLoc[k]=(byLoc[k]||0)+(x.waarde||0); }); bars('barsLoc',byLoc);
   $('actie').innerHTML = '<thead><tr><th>Wat</th><th>Categorie</th><th>Maatschappij</th><th>Polisnummer</th><th class="r">Premie</th></tr></thead><tbody>' +
-    alle.filter(x=>x.actie==='ja').map(x=>`<tr><td><div class="wl"><span>${esc(x.wat)}</span>${lk(x.link)}</div></td><td>${esc(x.cat)}</td><td>${esc(x.mij)}</td><td>${esc(x.polis)}</td><td class="r">${eur(x.premie)}</td></tr>`).join('') + '</tbody>';
+    alle.filter(x=>x.actie==='ja').map(x=>`<tr><td><div class="wl"><span>${esc(x.wat)}</span>${lk(x.link)}${fk(secVan(x.id),x)}</div></td><td>${esc(x.cat)}</td><td>${esc(x.mij)}</td><td>${esc(x.polis)}</td><td class="r">${eur(x.premie)}</td></tr>`).join('') + '</tbody>';
 
   fillSelect('fB', [...new Set(D.bedrijf.map(x=>x.cat).filter(Boolean))].sort());
   drawPolis('tB','bedrijf','qB', x=>(!$('fB').value||x.cat===$('fB').value)&&(!$('aB').value||x.actie==='ja'));
   drawPolis('tP','prive','qP');
-  $('notes').innerHTML = D.priveNotes.map(n=>`<li>${esc(n.tekst)}${lk(n.link)} ${eb('priveNotes',n.id)}</li>`).join('');
+  $('notes').innerHTML = D.priveNotes.map(n=>`<li>${esc(n.tekst)}${lk(n.link)}${fk('priveNotes',n)} ${eb('priveNotes',n.id)}</li>`).join('');
 
   fillSelect('lZ', [...new Set(D.bez.map(x=>x.loc).filter(Boolean))], locName);
   fillSelect('sZ', [...new Set(D.bez.map(x=>x.sub).filter(Boolean))].sort());
   drawZ();
 
   drawC();
-  $('extra').innerHTML = D.extra.map(e=>`<li>${esc(e.tekst)}${lk(e.link,'Openen')} ${eb('extra',e.id)}</li>`).join('');
+  $('extra').innerHTML = D.extra.map(e=>`<li>${esc(e.tekst)}${lk(e.link,'Openen')}${fk('extra',e)} ${eb('extra',e.id)}</li>`).join('');
   $('tl').innerHTML = [...D.tijd].sort((a,b)=>String(a.datum).localeCompare(String(b.datum))).map(d=>`<div class="d">${d.datum?new Date(d.datum).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'}):'(geen datum)'}</div> ${eb('tijd',d.id)}<div class="note">Aanwezig: ${esc(d.wie)}</div><ul>${(d.punten||[]).map(p=>`<li>${esc(p.tekst)}${p.extra?` <span class="tag act">${esc(p.extra)}</span>`:''}</li>`).join('')}</ul>`).join('');
 }
 
@@ -352,7 +366,7 @@ function drawPolis(id, sec, q, extra){
   const r = D[sec].filter(x=>(!t || [x.wat,x.mij,x.polis,x.cat,x.opm].join(' ').toLowerCase().includes(t)) && (!extra || extra(x)));
   r.sort((a,b)=>{const A=a[st.key]??'',B=b[st.key]??''; return (typeof A==='number'&&typeof B==='number'?A-B:String(A).localeCompare(String(B),'nl',{numeric:true}))*st.dir;});
   $(id).innerHTML = '<thead><tr>'+cols.map(c=>`<th class="${c[2]||''}" data-k="${c[0]}">${c[1]}${st.key===c[0]?(st.dir>0?' ▲':' ▼'):''}</th>`).join('')+(EDIT?'<th></th>':'')+'</tr></thead><tbody>'+
-    r.map(x=>`<tr><td class="muted">${esc(x.nr)}</td><td><div class="wl"><span>${esc(x.wat)}</span>${lk(x.link)}</div></td><td>${esc(x.cat)}</td><td>${mijLink(x.mij)}</td><td>${esc(x.polis)}</td><td>${tag(x.verz)}</td><td>${act(x.actie)}</td><td class="r">${eur(x.premie)}</td><td class="muted">${esc(x.opm)}</td>${EDIT?`<td>${eb(sec,x.id)}</td>`:''}</tr>`).join('')+
+    r.map(x=>`<tr><td class="muted">${esc(x.nr)}</td><td><div class="wl"><span>${esc(x.wat)}</span>${lk(x.link)}${fk(sec,x)}</div></td><td>${esc(x.cat)}</td><td>${mijLink(x.mij)}</td><td>${esc(x.polis)}</td><td>${tag(x.verz)}</td><td>${act(x.actie)}</td><td class="r">${eur(x.premie)}</td><td class="muted">${esc(x.opm)}</td>${EDIT?`<td>${eb(sec,x.id)}</td>`:''}</tr>`).join('')+
     `</tbody><tfoot><tr><td colspan="7">Totaal (${r.length} regels)</td><td class="r">${eur(sum(r,x=>x.premie))}</td><td${EDIT?' colspan="2"':''}></td></tr></tfoot>`;
   $(id).querySelectorAll('th[data-k]').forEach(th=>th.onclick=()=>{ if(st.key===th.dataset.k) st.dir=-st.dir; else {st.key=th.dataset.k;st.dir=1;} drawPolis(id,sec,q,extra); });
   $(q).oninput = () => drawPolis(id,sec,q,extra);
@@ -442,11 +456,11 @@ function renderInfo(){
         const naam = it[0].obj||'?';
         h += `<tr class="itog i2" data-k="${esc(kG)}"><td colspan="${veelSoort?2:1}"><span class="pijl">${oG?'▼':'▶'}</span>${esc(naam)}<span class="aantal">(${it.length} afdeling${it.length>1?'en':''})</span></td><td class="r" colspan="2">${hoev(it)}</td><td></td><td class="r">${eur0(sum(it,x=>x.waarde))}</td>${ex}</tr>`;
         if(!oG) continue;
-        it.sort((a,b)=>afdSort(afdNaam(a.afd),afdNaam(b.afd))).forEach(x=> h += `<tr class="i3"><td>${esc(afdNaam(x.afd))}${x.opm?` <span class="muted">– ${esc(x.opm)}</span>`:''}</td>${veelSoort?`<td class="muted">${esc(x.sub)}</td>`:''}<td class="r">${nf(x.aantal)}</td><td class="muted">${esc(x.eenh)}</td><td class="r">${eur(x.prijs)}</td><td class="r">${eur0(x.waarde)}</td>${EDIT?`<td>${eb('bez',x.id)}</td>`:''}</tr>`);
+        it.sort((a,b)=>afdSort(afdNaam(a.afd),afdNaam(b.afd))).forEach(x=> h += `<tr class="i3"><td>${esc(afdNaam(x.afd))}${x.opm?` <span class="muted">– ${esc(x.opm)}</span>`:''}${lk(x.link)}${fk('bez',x)}</td>${veelSoort?`<td class="muted">${esc(x.sub)}</td>`:''}<td class="r">${nf(x.aantal)}</td><td class="muted">${esc(x.eenh)}</td><td class="r">${eur(x.prijs)}</td><td class="r">${eur0(x.waarde)}</td>${EDIT?`<td>${eb('bez',x.id)}</td>`:''}</tr>`);
       } else {
         h += `<tr class="itog i2" data-k="${esc(kG)}"><td colspan="${nk-1}"><span class="pijl">${oG?'▼':'▶'}</span>${esc(g)}<span class="aantal">(${it.length})</span></td><td class="r">${eur0(sum(it,x=>x.waarde))}</td>${ex}</tr>`;
         if(!oG) continue;
-        it.sort((a,b)=>(b.waarde||0)-(a.waarde||0)).forEach(x=> h += `<tr class="i3 objklik" data-o="${esc(objKey(x))}" title="Klik: objecten bij elkaar zetten"><td>${esc(x.obj)}${x.opm?` <span class="muted">– ${esc(x.opm)}</span>`:''}</td>${veelSoort?`<td class="muted">${esc(x.sub)}</td>`:''}<td class="r">${nf(x.aantal)}</td><td class="muted">${esc(x.eenh)}</td><td class="r">${eur(x.prijs)}</td><td class="r">${eur0(x.waarde)}</td>${EDIT?`<td>${eb('bez',x.id)}</td>`:''}</tr>`);
+        it.sort((a,b)=>(b.waarde||0)-(a.waarde||0)).forEach(x=> h += `<tr class="i3 objklik" data-o="${esc(objKey(x))}" title="Klik: objecten bij elkaar zetten"><td>${esc(x.obj)}${x.opm?` <span class="muted">– ${esc(x.opm)}</span>`:''}${lk(x.link)}${fk('bez',x)}</td>${veelSoort?`<td class="muted">${esc(x.sub)}</td>`:''}<td class="r">${nf(x.aantal)}</td><td class="muted">${esc(x.eenh)}</td><td class="r">${eur(x.prijs)}</td><td class="r">${eur0(x.waarde)}</td>${EDIT?`<td>${eb('bez',x.id)}</td>`:''}</tr>`);
       }
     }
   }
@@ -615,6 +629,47 @@ ${body}
 }
 $('docBtn').onclick = maakDocument;
 
+// ---------- bestanden (Firebase Storage) ----------
+let FCUR = null;   // {sec,id}
+const kb = n => n>=1048576 ? (n/1048576).toLocaleString('nl-NL',{maximumFractionDigits:1})+' MB' : Math.max(1,Math.round(n/1024))+' kB';
+function toonFiles(){
+  const { sec, id } = FCUR; const x = D[sec].find(i=>i.id===id); if(!x){ $('dlgFiles').close(); return; }
+  $('filesTitel').textContent = '📎 ' + (x.wat||x.obj||x.tekst||x.naam||'Bestanden') + (x.loc?` – ${locName(x.loc)} · ${afdNaam(x.afd)}`:'');
+  const f = x.files||[];
+  $('filesLijst').innerHTML = f.length ? f.map((b,i)=>`<li><span class="fn">📄 ${esc(b.name)}</span><span class="fm">${kb(b.size||0)} · ${b.datum?new Date(b.datum).toLocaleDateString('nl-NL'):''}</span><button type="button" data-fopen="${i}">Openen</button>${BEHEER?`<button type="button" data-fdel="${i}" title="Verwijderen">🗑️</button>`:''}</li>`).join('') : '<li class="muted">Nog geen bestanden.</li>';
+  $('filesUp').hidden = !BEHEER;
+}
+document.addEventListener('click', e=>{
+  const b = e.target.closest('[data-fsec]'); if(!b) return;
+  e.preventDefault(); e.stopPropagation();
+  FCUR = { sec:b.dataset.fsec, id:b.dataset.fid }; toonFiles(); $('dlgFiles').showModal();
+}, true);
+$('filesLijst').addEventListener('click', async e=>{
+  const o = e.target.closest('[data-fopen]'), d = e.target.closest('[data-fdel]');
+  const x = D[FCUR.sec].find(i=>i.id===FCUR.id); if(!x) return;
+  if(o){ const f=x.files[+o.dataset.fopen]; const w=window.open('','_blank');
+    try{ const u=await getDownloadURL(sRef(storage,f.path)); if(w) w.location=u; else window.location=u; }
+    catch(err){ if(w) w.close(); alert(err.code==='storage/unauthorized'?'Je hebt geen toegang tot dit bestand.':'Openen mislukt: '+err.message); } }
+  if(d){ const f=x.files[+d.dataset.fdel]; if(!confirm(`"${f.name}" verwijderen?`)) return;
+    try{ await deleteObject(sRef(storage,f.path)); }catch(err){ if(err.code!=='storage/object-not-found'){ alert('Verwijderen mislukt: '+err.message); return; } }
+    await opslaan(FCUR.sec, items=>items.map(i=>i.id===FCUR.id?{...i, files:(i.files||[]).filter(z=>z.path!==f.path)}:i), 'Bestand verwijderd');
+    toonFiles(); }
+});
+$('filesInput').onchange = async ev => {
+  const lijst=[...ev.target.files]; ev.target.value=''; if(!lijst.length) return;
+  const { sec, id } = FCUR, nieuw=[];
+  for(const f of lijst){
+    if(f.size>25*1024*1024){ alert(`"${f.name}" is groter dan 25 MB.`); continue; }
+    toast(`Uploaden: ${f.name}…`);
+    const path = `docs/${sec}/${id}/${Date.now()}-${f.name.replace(/[\\/#?]/g,'_')}`;
+    try{ await uploadBytes(sRef(storage,path), f, {contentType:f.type||'application/octet-stream'});
+      nieuw.push({ name:f.name, path, size:f.size, type:f.type||'', datum:new Date().toISOString(), door:USER.email }); }
+    catch(err){ alert(err.code==='storage/unauthorized' ? 'Uploaden niet toegestaan. Staan de Storage-regels goed?' : 'Uploaden mislukt: '+err.message); }
+  }
+  if(nieuw.length) await opslaan(sec, items=>items.map(i=>i.id===id?{...i, files:[...(i.files||[]), ...nieuw]}:i), nieuw.length+' bestand'+(nieuw.length>1?'en':'')+' geüpload');
+  toonFiles();
+};
+
 // ---------- contacten ----------
 const norm = v => String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const heeftContact = m => m && D.contacten.some(c=>norm(c.org)===norm(m) || norm(c.naam)===norm(m));
@@ -639,6 +694,7 @@ function drawC(){
       ${c.klantnr?`<div class="opm">Klantnummer: ${esc(c.klantnr)}</div>`:''}
       ${c.opm?`<div class="opm">${esc(c.opm)}</div>`:''}
       ${pol?`<div class="pol">${pol} polis${pol>1?'sen':''}</div>`:''}
+      ${(c.files||[]).length||EDIT?`<div>${fk('contacten',c)}</div>`:''}
       ${eb('contacten',c.id)}
     </div>`;}).join('') || '<div class="leeg">Niets gevonden.</div>';
 }
