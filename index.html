@@ -181,7 +181,7 @@ button.fbtn.leeg{background:#fff;color:#2e6b47;border:1px dashed #2e6b47}
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.28</span>
+  <span class="versie" title="Versie">v1.29</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="expBtn" hidden title="Alle gegevens downloaden als back-up">⬇ Back-up</button>
@@ -232,7 +232,7 @@ button.fbtn.leeg{background:#fff;color:#2e6b47;border:1px dashed #2e6b47}
   </section>
 
   <section id="prive">
-    <div class="tools"><input type="search" id="qP" placeholder="Zoek…"><button class="btn add" data-add="prive">+ Toevoegen</button></div>
+    <div class="tools"><input type="search" id="qP" placeholder="Zoek…"><button type="button" class="btn klein" id="pvSlot" title="Privé weer op slot zetten">🔒 Vergrendelen</button><button type="button" class="btn klein" id="pvWijzig" hidden>🔑 Wachtwoord wijzigen</button><button class="btn add" data-add="prive">+ Toevoegen</button></div>
     <div class="card tw"><table id="tP"></table></div>
     <div class="card"><h2>Notities <button class="btn add" data-add="priveNotes">+ Toevoegen</button></h2><ul id="notes"></ul></div>
   </section>
@@ -272,6 +272,11 @@ button.fbtn.leeg{background:#fff;color:#2e6b47;border:1px dashed #2e6b47}
 <dialog id="dlgInfo" class="breed"><form method="dialog"><h2 id="infoTitel"></h2><div id="infoInhoud" class="tw"></div><div class="knoppen"><span id="infoKnop" class="schakel" style="float:none"><button type="button" data-m="afd">Per afdeling</button><button type="button" data-m="obj">Per object</button></span><button type="button" class="btn klein" id="infoOpen">▼ Alles open</button><button type="button" class="btn klein" id="infoDicht">▶ Alles dicht</button><button type="button" class="btn add" id="infoAdd" hidden>+ Object toevoegen</button><span style="flex:1"></span><button class="btn blue">Sluiten</button></div></form></dialog>
 <dialog id="dlgFiles"><form method="dialog"><h2 id="filesTitel">Bestanden</h2><ul id="filesLijst" class="flijst"></ul>
 <div class="knoppen"><label class="btn add" id="filesUp">⬆ Bestand uploaden<input type="file" id="filesInput" multiple hidden></label><span style="flex:1"></span><button class="btn blue">Sluiten</button></div></form></dialog>
+<dialog id="dlgPw"><form id="frmPw" method="dialog"><h2 id="pwTitel">🔒 Privé</h2><p id="pwTekst" class="muted"></p>
+<label>Wachtwoord</label><input type="password" id="pw1" autocomplete="current-password">
+<div id="pw2wrap"><label>Nog een keer</label><input type="password" id="pw2" autocomplete="new-password"></div>
+<p class="msg" id="pwFout"></p>
+<div class="knoppen"><button class="btn" value="annuleer" formnovalidate>Annuleren</button><button class="btn blue" value="ok">OK</button></div></form></dialog>
 <div id="toast" hidden></div>
 
 <script type="module">
@@ -287,7 +292,8 @@ const db = getFirestore(app);
 const storage = getStorage(app);
 const KEYS = ['bedrijf','prive','priveNotes','bez','tijd','extra','contacten'];
 const $ = id => document.getElementById(id);
-let D = null, USER = null, EDIT = false, BEHEER = false;
+let D = null, USER = null, EDIT = false, BEHEER = false, PRIVE_OPEN = false;
+try{ PRIVE_OPEN = sessionStorage.getItem('priveOpen')==='1'; }catch(e){}
 
 // ---------- hulpjes ----------
 const eur = n => n==null ? '' : '€ ' + n.toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -313,12 +319,13 @@ function fillSelect(id, values, label=v=>v){
 }
 
 // ---------- tabs ----------
-document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+document.querySelectorAll('nav button').forEach(b=>b.onclick=async()=>{
+  if(b.dataset.t==='prive' && !PRIVE_OPEN){ if(!D || !(await priveOntgrendel())) return; }
   document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));
   document.querySelectorAll('section').forEach(s=>s.classList.toggle('on',s.id===b.dataset.t));
   try{localStorage.setItem('tab',b.dataset.t)}catch(e){}
 });
-try{const t=localStorage.getItem('tab'); if(t) document.querySelector(`nav button[data-t="${t}"]`)?.click();}catch(e){}
+try{const t=localStorage.getItem('tab'); if(t && t!=='prive') document.querySelector(`nav button[data-t="${t}"]`)?.click();}catch(e){}
 
 // ---------- tekenen ----------
 const sort = { tB:{key:'cat',dir:1}, tP:{key:'cat',dir:1} };
@@ -328,10 +335,11 @@ function render(){
     ? `Laatst gewijzigd: ${new Date(m.gewijzigd).toLocaleString('nl-NL')} door ${m.door||'?'}`
     : `Bron: ${m.bron||''} · gemaakt op ${m.gemaakt?new Date(m.gemaakt).toLocaleDateString('nl-NL'):''}`;
 
-  const alle = [...D.bedrijf,...D.prive];
+  const PRV = PRIVE_OPEN ? D.prive : [];
+  const alle = [...D.bedrijf,...PRV];
   $('kpis').innerHTML = [
     ['Premie zakelijk / jaar', eur0(sum(D.bedrijf,x=>x.premie))],
-    ['Premie privé / jaar', eur0(sum(D.prive,x=>x.premie))],
+    ['Premie privé / jaar', PRIVE_OPEN ? eur0(sum(D.prive,x=>x.premie)) : '🔒'],
     ['Verzekerde waarde kassen', eur0(sum(D.bez,x=>x.waarde))],
     ['Actie nodig', alle.filter(x=>x.actie==='ja').length + ' polissen'],
   ].map(([l,v])=>`<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div></div>`).join('');
@@ -678,6 +686,53 @@ $('filesInput').onchange = async ev => {
   toonFiles();
 };
 
+// ---------- privé-slot (simpel wachtwoord) ----------
+const hashPw = async pw => { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('verz-prive:'+pw)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); };
+function vraagPw(titel, tekst, dubbel){
+  return new Promise(res=>{
+    $('pwTitel').textContent=titel; $('pwTekst').textContent=tekst; $('pw2wrap').hidden=!dubbel; $('pwFout').textContent='';
+    $('pw1').value=''; $('pw2').value='';
+    const d=$('dlgPw');
+    d.onclose=()=>res(d.returnValue==='ok' ? {a:$('pw1').value, b:$('pw2').value} : null);
+    d.returnValue=''; d.showModal(); $('pw1').focus();
+  });
+}
+async function slaHashOp(h){
+  await runTransaction(db, async tx => { tx.set(doc(db,'overzicht','meta'), {priveHash:h}, {merge:true}); });
+  D.meta = {...D.meta, priveHash:h};
+}
+async function nieuwPw(titel){
+  for(;;){
+    const r = await vraagPw(titel, 'Kies een wachtwoord voor het tabblad Privé (minstens 4 tekens).', true);
+    if(!r) return false;
+    if(r.a.length<4){ alert('Het wachtwoord moet minstens 4 tekens hebben.'); continue; }
+    if(r.a!==r.b){ alert('De twee wachtwoorden zijn niet gelijk.'); continue; }
+    try{ await slaHashOp(await hashPw(r.a)); toast('Wachtwoord opgeslagen ✔'); return true; }
+    catch(e){ alert('Opslaan mislukt: '+e.message); return false; }
+  }
+}
+async function priveOntgrendel(){
+  if(!D.meta?.priveHash){
+    if(!BEHEER) return zetPrive(true);
+    if(!(await nieuwPw('🔑 Wachtwoord instellen'))) return false;
+    return zetPrive(true);
+  }
+  for(let poging=0; poging<5; poging++){
+    const r = await vraagPw('🔒 Privé', 'Voer het wachtwoord in om Privé te openen.', false);
+    if(!r) return false;
+    if(await hashPw(r.a)===D.meta.priveHash) return zetPrive(true);
+    alert('Wachtwoord klopt niet.');
+  }
+  return false;
+}
+function zetPrive(open){
+  PRIVE_OPEN = open; try{ sessionStorage.setItem('priveOpen', open?'1':'0'); }catch(e){}
+  if(D) render();
+  return open;
+}
+$('pvSlot').onclick = () => { zetPrive(false); document.querySelector('nav button[data-t="home"]').click(); toast('Privé vergrendeld 🔒'); };
+$('pvWijzig').onclick = () => nieuwPw('🔑 Wachtwoord wijzigen');
+
 // ---------- contacten ----------
 const norm = v => String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const heeftContact = m => m && D.contacten.some(c=>norm(c.org)===norm(m) || norm(c.naam)===norm(m));
@@ -801,13 +856,13 @@ $('expBtn').onclick = () => {
 // ---------- inloggen ----------
 $('in').onclick = () => signInWithPopup(auth, new GoogleAuthProvider())
   .catch(e => $('fout').textContent = 'Inloggen mislukt: ' + e.message);
-$('uit').onclick = () => signOut(auth);
+$('uit').onclick = () => { zetPrive(false); signOut(auth); };
 
 onAuthStateChanged(auth, async user => {
   USER = user; $('fout').textContent = '';
   if (!user) { $('login').hidden=false; $('app').hidden=true; $('user').hidden=true; $('in').hidden=false; return; }
   const beheer = beheerders.includes(user.email.toLowerCase());
-  BEHEER = beheer; document.body.classList.toggle('beheer', beheer);
+  BEHEER = beheer; document.body.classList.toggle('beheer', beheer); $('pvWijzig').hidden = !beheer;
   $('user').hidden=false; $('uit').title='Ingelogd als '+user.email;
   ['editBtn','expBtn','upBtn'].forEach(i=>$(i).hidden=!beheer);
   try {
