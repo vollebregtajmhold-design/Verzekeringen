@@ -181,7 +181,7 @@ button.fbtn.leeg{background:#fff;color:#2e6b47;border:1px dashed #2e6b47}
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.29</span>
+  <span class="versie" title="Versie">v1.30</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="expBtn" hidden title="Alle gegevens downloaden als back-up">⬇ Back-up</button>
@@ -206,18 +206,18 @@ button.fbtn.leeg{background:#fff;color:#2e6b47;border:1px dashed #2e6b47}
 </div>
 <div id="app" hidden>
 <nav><div class="in">
-  <button data-t="home" class="on">Overzicht</button>
+  <button data-t="bez" class="on">Kassen</button>
   <button data-t="bedrijf">Zakelijk</button>
   <button data-t="prive">Privé</button>
-  <button data-t="bez">Kassen</button>
   <button data-t="tijd">Aandachtspunten</button>
+  <button data-t="home">Actie</button>
   <button data-t="contact">Contacten</button>
 </div></nav>
 <main>
-  <section id="home" class="on">
-    <div class="kpis" id="kpis"></div>
-    <div class="card"><h2>Premie per maatschappij (per jaar)</h2><div class="bars" id="barsMij"></div></div>
-    <div class="card"><h2>Verzekerde waarde per locatie</h2><div class="bars" id="barsLoc"></div></div>
+  <section id="home">
+    <div class="kpis" id="kpis" hidden></div>
+    <div class="card" hidden><h2>Premie per maatschappij (per jaar)</h2><div class="bars" id="barsMij"></div></div>
+    <div class="card" hidden><h2>Verzekerde waarde per locatie</h2><div class="bars" id="barsLoc"></div></div>
     <div class="card"><h2>Actie nodig</h2><div class="tw"><table id="actie"></table></div></div>
   </section>
 
@@ -237,7 +237,7 @@ button.fbtn.leeg{background:#fff;color:#2e6b47;border:1px dashed #2e6b47}
     <div class="card"><h2>Notities <button class="btn add" data-add="priveNotes">+ Toevoegen</button></h2><ul id="notes"></ul></div>
   </section>
 
-  <section id="bez">
+  <section id="bez" class="on">
     <div class="tools">
       <input type="search" id="qZ" placeholder="Zoek object…">
       <select id="lZ"><option value="">Alle locaties</option></select>
@@ -730,7 +730,7 @@ function zetPrive(open){
   if(D) render();
   return open;
 }
-$('pvSlot').onclick = () => { zetPrive(false); document.querySelector('nav button[data-t="home"]').click(); toast('Privé vergrendeld 🔒'); };
+$('pvSlot').onclick = () => { zetPrive(false); document.querySelector('nav button[data-t="bez"]').click(); toast('Privé vergrendeld 🔒'); };
 $('pvWijzig').onclick = () => nieuwPw('🔑 Wachtwoord wijzigen');
 
 // ---------- contacten ----------
