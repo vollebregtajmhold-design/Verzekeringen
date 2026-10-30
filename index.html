@@ -171,6 +171,17 @@ button.fbtn.leeg{background:#fff;color:#2e6b47;border:1px dashed #2e6b47}
 .flijst li .fn{flex:1;word-break:break-all}
 .flijst li .fm{color:#777;font-size:12px;white-space:nowrap}
 .flijst li button{font:inherit;font-size:13px;cursor:pointer;border:1px solid #999;border-radius:6px;background:#fff;padding:3px 10px}
+.wiekeus{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 4px}
+.wiekeus button{font:inherit;font-weight:700;font-size:17px;padding:12px 22px;border-radius:10px;border:2px solid var(--green);background:#fff;color:var(--green);cursor:pointer}
+.wiekeus button:hover,.wiekeus button.on{background:var(--green);color:#fff}
+table.hist td{font-size:13px;vertical-align:top}
+table.hist .wz{color:#555}
+table.hist .wz b{color:#111;font-weight:600}
+table.hist .oud{color:#a33;text-decoration:line-through}
+table.hist .nw{color:#1d6b3a}
+table.hist button{font:inherit;font-size:12px;cursor:pointer;border:1px solid #999;border-radius:6px;background:#fff;padding:2px 8px;white-space:nowrap}
+#dlgHist .tools{display:flex;gap:8px;flex-wrap:wrap}
+#dlgHist .tools select,#dlgHist .tools input{width:auto;flex:1;min-width:140px}
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -181,9 +192,10 @@ button.fbtn.leeg{background:#fff;color:#2e6b47;border:1px dashed #2e6b47}
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.30</span>
+  <span class="versie" title="Versie">v1.31</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
+    <button class="btn" id="histBtn" hidden title="Wie heeft wat gewijzigd">🕘 Geschiedenis</button>
     <button class="btn" id="expBtn" hidden title="Alle gegevens downloaden als back-up">⬇ Back-up</button>
     <button class="btn" id="uit">Uitloggen</button>
   </div>
@@ -277,6 +289,12 @@ button.fbtn.leeg{background:#fff;color:#2e6b47;border:1px dashed #2e6b47}
 <div id="pw2wrap"><label>Nog een keer</label><input type="password" id="pw2" autocomplete="new-password"></div>
 <p class="msg" id="pwFout"></p>
 <div class="knoppen"><button class="btn" value="annuleer" formnovalidate>Annuleren</button><button class="btn blue" value="ok">OK</button></div></form></dialog>
+<dialog id="dlgWie"><form method="dialog"><h2>Wie gaat er bewerken?</h2><div class="wiekeus" id="wieKnoppen"></div>
+<div class="knoppen"><button class="btn" value="">Annuleren</button></div></form></dialog>
+<dialog id="dlgHist" class="breed"><form method="dialog"><h2>🕘 Geschiedenis</h2>
+<div class="tools" style="margin-bottom:8px"><select id="hWie"><option value="">Iedereen</option></select><select id="hSec"><option value="">Alle tabbladen</option></select><input type="search" id="hZoek" placeholder="Zoek…"></div>
+<div id="histInhoud" class="tw" style="max-height:60vh;overflow:auto"></div>
+<div class="knoppen"><span class="muted" style="flex:1">De laatste 400 wijzigingen worden bewaard.</span><button class="btn blue">Sluiten</button></div></form></dialog>
 <div id="toast" hidden></div>
 
 <script type="module">
@@ -733,6 +751,69 @@ function zetPrive(open){
 $('pvSlot').onclick = () => { zetPrive(false); document.querySelector('nav button[data-t="bez"]').click(); toast('Privé vergrendeld 🔒'); };
 $('pvWijzig').onclick = () => nieuwPw('🔑 Wachtwoord wijzigen');
 
+// ---------- wie bewerkt + geschiedenis ----------
+const BEWERKERS = ['Arno','Monique','Quinten'];
+let WIE = ''; try{ WIE = sessionStorage.getItem('wie')||''; }catch(e){}
+const wieNaam = () => WIE || (USER?.email||'?');
+function kiesWie(){
+  return new Promise(res=>{
+    $('wieKnoppen').innerHTML = BEWERKERS.map(n=>`<button type="button" data-n="${esc(n)}" class="${n===WIE?'on':''}">${esc(n)}</button>`).join('');
+    const d=$('dlgWie'); let gekozen='';
+    $('wieKnoppen').onclick = e=>{ const b=e.target.closest('button[data-n]'); if(!b) return; gekozen=b.dataset.n; d.close(); };
+    d.onclose = ()=>{ if(gekozen){ WIE=gekozen; try{sessionStorage.setItem('wie',WIE)}catch(e){} } res(gekozen); };
+    d.showModal();
+  });
+}
+const SECNAAM = { bedrijf:'Zakelijk', prive:'Privé', priveNotes:'Notities', bez:'Kassen', tijd:'Aandachtspunten', extra:'Links', contacten:'Contacten' };
+const VELD = { wat:'Wat', cat:'Categorie', mij:'Maatschappij', polis:'Polisnummer', verz:'Verzekerd', actie:'Actie', premie:'Premie', opm:'Opmerking', link:'Link', nr:'Nr',
+  loc:'Locatie', afd:'Afdeling', sub:'Soort', obj:'Object', aantal:'Aantal', eenh:'Eenheid', prijs:'Prijs', waarde:'Waarde', promille:'Premie ‰', dekking:'Dekking',
+  tekst:'Tekst', datum:'Datum', wie:'Aanwezig', punten:'Punten', naam:'Naam', org:'Maatschappij', rol:'Rol', tel:'Telefoon', mob:'Mobiel', email:'E-mail', web:'Website', login:'Klantportaal', adres:'Adres', klantnr:'Klantnummer', files:'Bestanden' };
+const itemNaam = x => x ? (x.wat||x.obj||x.tekst||x.naam||x.datum||'?') + (x.loc?` (${locName(x.loc)}${x.afd&&x.afd!=='-'?' · '+x.afd:''})`:'') : '?';
+const toonW = (k,v) => v==null||v==='' ? '–' : k==='files' ? (v.length+' bestand'+(v.length===1?'':'en')) : k==='punten' ? (v.length+' punten') : typeof v==='number' ? nf(v) : String(v);
+function verschil(sec, oud, nieuw){
+  const t = new Date().toISOString(), basis = { t, wie:wieNaam(), email:USER?.email||'', sec };
+  const O = new Map(oud.map(x=>[x.id,x])), N = new Map(nieuw.map(x=>[x.id,x])), out=[];
+  for(const [id,x] of N){ if(!O.has(id)) out.push({...basis, actie:'toegevoegd', id, naam:itemNaam(x), na:x}); }
+  for(const [id,x] of O){ if(!N.has(id)) out.push({...basis, actie:'verwijderd', id, naam:itemNaam(x), voor:x}); }
+  for(const [id,n] of N){ const o=O.get(id); if(!o) continue;
+    const velden = [...new Set([...Object.keys(o),...Object.keys(n)])].filter(k=>k!=='id' && JSON.stringify(o[k]??null)!==JSON.stringify(n[k]??null));
+    if(velden.length){ const voor={}, na={}; velden.forEach(k=>{ voor[k]=o[k]??null; na[k]=n[k]??null; });
+      out.push({...basis, actie:'gewijzigd', id, naam:itemNaam(n), voor, na}); } }
+  return out;
+}
+let HIST = [];
+async function toonGeschiedenis(){
+  try{ const d = await getDoc(doc(db,'overzicht','log')); HIST = d.exists()?(d.data().items||[]):[]; }
+  catch(e){ alert('Geschiedenis laden mislukt: '+e.message); return; }
+  const fill=(id,vals,lab=v=>v)=>{ const s=$(id), k=s.value; while(s.options.length>1) s.remove(1); vals.forEach(v=>s.insertAdjacentHTML('beforeend',`<option value="${esc(v)}">${esc(lab(v))}</option>`)); s.value=vals.includes(k)?k:''; };
+  fill('hWie',[...new Set(HIST.map(h=>h.wie))].sort());
+  fill('hSec',[...new Set(HIST.map(h=>h.sec))],v=>SECNAAM[v]||v);
+  tekenHist(); $('dlgHist').showModal();
+}
+function tekenHist(){
+  const w=$('hWie').value, sc=$('hSec').value, z=$('hZoek').value.toLowerCase();
+  const r = HIST.map((h,i)=>({...h,i})).filter(h=>(!w||h.wie===w)&&(!sc||h.sec===sc)&&(!z||JSON.stringify(h).toLowerCase().includes(z))).reverse();
+  if(!r.length){ $('histInhoud').innerHTML='<p class="muted">Nog geen wijzigingen.</p>'; return; }
+  $('histInhoud').innerHTML = '<table class="hist"><thead><tr><th>Wanneer</th><th>Wie</th><th>Wat</th><th>Details</th><th></th></tr></thead><tbody>' + r.map(h=>{
+    let det='';
+    if(h.actie==='gewijzigd') det = Object.keys(h.na||{}).map(k=>`<div class="wz"><b>${esc(VELD[k]||k)}:</b> <span class="oud">${esc(toonW(k,h.voor?.[k]))}</span> → <span class="nw">${esc(toonW(k,h.na[k]))}</span></div>`).join('');
+    const icoon = h.actie==='toegevoegd'?'➕':h.actie==='verwijderd'?'🗑️':'✏️';
+    return `<tr><td style="white-space:nowrap">${new Date(h.t).toLocaleString('nl-NL',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</td><td><b>${esc(h.wie)}</b></td><td>${icoon} ${esc(SECNAAM[h.sec]||h.sec)} · ${esc(h.naam)} <span class="muted">${esc(h.actie)}</span></td><td>${det}</td><td>${EDIT&&!h.terug?`<button type="button" data-terug="${h.i}" title="Deze wijziging ongedaan maken">↩ Terugzetten</button>`:''}</td></tr>`;
+  }).join('') + '</tbody></table>';
+}
+['hWie','hSec','hZoek'].forEach(i=>$(i).oninput=tekenHist);
+$('histBtn').onclick = toonGeschiedenis;
+$('histInhoud').addEventListener('click', async e=>{
+  const b=e.target.closest('[data-terug]'); if(!b) return;
+  const h=HIST[+b.dataset.terug]; if(!h || !confirm(`"${h.naam}" terugzetten naar hoe het was vóór deze wijziging?`)) return;
+  await opslaan(h.sec, items=>{
+    if(h.actie==='toegevoegd') return items.filter(x=>x.id!==h.id);
+    if(h.actie==='verwijderd') return items.some(x=>x.id===h.id) ? items : [...items, h.voor];
+    return items.map(x=>{ if(x.id!==h.id) return x; const y={...x}; Object.entries(h.voor||{}).forEach(([k,v])=>{ if(v==null) delete y[k]; else y[k]=v; }); return y; });
+  }, 'Teruggezet');
+  await toonGeschiedenis();
+});
+
 // ---------- contacten ----------
 const norm = v => String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const heeftContact = m => m && D.contacten.some(c=>norm(c.org)===norm(m) || norm(c.naam)===norm(m));
@@ -816,13 +897,16 @@ async function opslaan(sec, wijzig, melding){
   try{
     const ref = doc(db,'overzicht',sec), metaRef = doc(db,'overzicht','meta');
     const items = await runTransaction(db, async tx => {
-      const snap = await tx.get(ref);
-      const nieuw = wijzig(withIds(snap.exists()?snap.data().items:[], sec));
+      const snap = await tx.get(ref), logSnap = await tx.get(doc(db,'overzicht','log'));
+      const oud = withIds(snap.exists()?snap.data().items:[], sec);
+      const nieuw = wijzig(oud.map(x=>({...x})));
       tx.set(ref, {items:nieuw});
-      tx.set(metaRef, {gewijzigd:new Date().toISOString(), door:USER.email}, {merge:true});
+      tx.set(metaRef, {gewijzigd:new Date().toISOString(), door:wieNaam()}, {merge:true});
+      const regels = verschil(sec, oud, nieuw);
+      if(regels.length){ const log = logSnap.exists()?(logSnap.data().items||[]):[]; tx.set(doc(db,'overzicht','log'), {items:[...log, ...regels].slice(-400)}); }
       return nieuw;
     });
-    D[sec] = items; D.meta = {...D.meta, gewijzigd:new Date().toISOString(), door:USER.email};
+    D[sec] = items; D.meta = {...D.meta, gewijzigd:new Date().toISOString(), door:wieNaam()};
     render(); toast(melding+' ✔');
     if(sec==='bez' && INFO && $('dlgInfo').open){ INFO.items = D.bez.filter(INFO.filt); alleOpen(); renderInfo(); }
   }catch(e){
@@ -844,7 +928,9 @@ document.addEventListener('click', e=>{
   }
 });
 
-$('editBtn').onclick = () => { EDIT=!EDIT; document.body.classList.toggle('edit',EDIT); $('editBtn').textContent = EDIT?'✔ Klaar':'✏️ Bewerken'; render(); };
+$('editBtn').onclick = async () => {
+  if(!EDIT){ const w = await kiesWie(); if(!w) return; }
+  EDIT=!EDIT; document.body.classList.toggle('edit',EDIT); $('editBtn').textContent = EDIT?`✔ Klaar (${WIE})`:'✏️ Bewerken'; render(); };
 
 $('expBtn').onclick = () => {
   const out = { bron:D.meta?.bron||'', gemaakt:D.meta?.gemaakt||'' }; KEYS.forEach(k=>out[k]=D[k]);
@@ -864,7 +950,7 @@ onAuthStateChanged(auth, async user => {
   const beheer = beheerders.includes(user.email.toLowerCase());
   BEHEER = beheer; document.body.classList.toggle('beheer', beheer); $('pvWijzig').hidden = !beheer;
   $('user').hidden=false; $('uit').title='Ingelogd als '+user.email;
-  ['editBtn','expBtn','upBtn'].forEach(i=>$(i).hidden=!beheer);
+  ['editBtn','expBtn','upBtn','histBtn'].forEach(i=>$(i).hidden=!beheer);
   try {
     const meta = await getDoc(doc(db,'overzicht','meta'));
     if (!meta.exists()) {
