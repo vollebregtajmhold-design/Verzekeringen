@@ -192,7 +192,7 @@ table.hist button{font:inherit;font-size:12px;cursor:pointer;border:1px solid #9
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.31</span>
+  <span class="versie" title="Versie">v1.32</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="histBtn" hidden title="Wie heeft wat gewijzigd">🕘 Geschiedenis</button>
@@ -752,7 +752,7 @@ $('pvSlot').onclick = () => { zetPrive(false); document.querySelector('nav butto
 $('pvWijzig').onclick = () => nieuwPw('🔑 Wachtwoord wijzigen');
 
 // ---------- wie bewerkt + geschiedenis ----------
-const BEWERKERS = ['Arno','Monique','Quinten'];
+const BEWERKERS = ['Arno','Monique','Quintes'];
 let WIE = ''; try{ WIE = sessionStorage.getItem('wie')||''; }catch(e){}
 const wieNaam = () => WIE || (USER?.email||'?');
 function kiesWie(){
