@@ -12,4 +12,4 @@ export const firebaseConfig = {
 
 // Wie ziet de knop "Gegevens bijwerken"? (kleine letters)
 // Let op: de echte controle staat in firestore.rules.
-export const beheerders = ["vollebregt.ajmhold@gmail.com"];
+export const beheerders = ["vollebregt.ajmhold@gmail.com", "vollebregt.a@gmail.com"];
