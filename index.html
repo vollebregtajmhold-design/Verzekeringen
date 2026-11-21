@@ -201,6 +201,24 @@ table.dt tr.d0 td{font-weight:700}
 table.dt tr.d1 td{background:#faf8f3}
 table.dt tr.d2 td,table.dt tr.d3 td{background:#fdfcf9;font-size:13px}
 table.dt th.c{text-align:center}
+.dtbar{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end}
+.dtpick{position:relative}
+.dtlab{font-size:12px;font-weight:700;color:#555;margin-bottom:3px}
+.dtbtn{font:inherit;font-weight:700;font-size:14px;padding:6px 14px;border:2px solid var(--green);border-radius:8px;background:var(--mint);color:var(--ink);cursor:pointer;max-width:340px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dtbtn.open{background:var(--green);color:#fff}
+.dtpop{position:absolute;top:100%;left:0;margin-top:4px;z-index:30;background:#fff;border:1px solid #bbb;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.3);padding:10px 12px;min-width:230px}
+.dtpop .uitleg{font-size:12px;color:#777;margin-bottom:6px}
+.dtpop .it{display:flex;align-items:center;gap:10px;padding:6px 4px;border-radius:6px;cursor:pointer;font-size:15px;user-select:none}
+.dtpop .it:hover{background:#eef3ef}
+.dtpop .it.on{font-weight:700}
+.dtpop .it.elders{color:#999}
+.dtpop .it .rnd{width:22px;height:22px;flex:0 0 22px;border-radius:50%;border:2px solid #888;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff}
+.dtpop .it.on .rnd{background:var(--green);border-color:var(--green)}
+.dtpop .it .waar{font-size:11px;color:#999;margin-left:auto}
+.dtpop .it select{margin-left:auto;font-size:12px;padding:2px 4px;background:#fff;color:var(--ink);font-weight:400;border:1px solid #aaa}
+.dtpop .voet{display:flex;gap:8px;margin-top:8px;border-top:1px solid #eee;padding-top:8px}
+.dtpop .voet button{font:inherit;font-weight:700;font-size:13px;padding:5px 14px;border:2px solid var(--green);border-radius:8px;background:#fff;color:var(--green);cursor:pointer}
+.dtpop .voet button:hover{background:var(--green);color:#fff}
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -211,7 +229,7 @@ table.dt th.c{text-align:center}
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.33</span>
+  <span class="versie" title="Versie">v1.34</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="histBtn" hidden title="Wie heeft wat gewijzigd">🕘 Geschiedenis</button>
@@ -294,11 +312,10 @@ table.dt th.c{text-align:center}
   <section id="dt">
     <div class="card">
       <h2>Draaitabel – kassen <span style="float:right"><button type="button" class="btn klein" id="dtStd">↺ Standaard</button></span></h2>
-      <div class="dtcfg">
-        <div class="dtzone"><div class="dtk">Rijen</div><div id="dtRij" class="chips"></div><select id="dtRijAdd"><option value="">+ veld toevoegen</option></select></div>
-        <div class="dtzone"><div class="dtk">Kolommen</div><div id="dtKol" class="chips"></div><select id="dtKolAdd"><option value="">+ veld toevoegen</option></select></div>
-        <div class="dtzone"><div class="dtk">Waarden</div><div id="dtVal" class="chips"></div>
-          <div class="dtadd"><select id="dtValVeld"></select><select id="dtValAgg"></select><button type="button" class="btn klein" id="dtValAdd">+ toevoegen</button></div></div>
+      <div class="dtbar">
+        <div class="dtpick"><div class="dtlab">Groeperen (rijen)</div><button type="button" class="dtbtn" data-zone="rij"><span class="dtsel"></span> ▾</button><div class="dtpop" data-zone="rij" hidden></div></div>
+        <div class="dtpick"><div class="dtlab">Kolommen</div><button type="button" class="dtbtn" data-zone="kol"><span class="dtsel"></span> ▾</button><div class="dtpop" data-zone="kol" hidden></div></div>
+        <div class="dtpick"><div class="dtlab">Waarden</div><button type="button" class="dtbtn" data-zone="val"><span class="dtsel"></span> ▾</button><div class="dtpop" data-zone="val" hidden></div></div>
       </div>
     </div>
     <div class="tools"><input type="search" id="dtZoek" placeholder="Filter: zoek object, soort, opmerking…"><button type="button" class="btn klein" id="dtOpen">▼ Alles open</button><button type="button" class="btn klein" id="dtDicht">▶ Alles dicht</button></div>
@@ -886,18 +903,7 @@ const dtMLabel = m => DT_MAAT[m.m].n + (m.a==='som' ? '' : ' ('+DT_AGG[m.a]+')')
 let DTCELL = [];
 function drawDT(){
   if(!D) return;
-  // configuratie-knoppen
-  const chip = (k,lab,zone,i,n) => `<span class="chip">${esc(lab)}${i>0?`<button type="button" data-dtmv="${zone}" data-i="${i}" data-d="-1" title="Naar voren">‹</button>`:''}${i<n-1?`<button type="button" data-dtmv="${zone}" data-i="${i}" data-d="1" title="Naar achteren">›</button>`:''}<button type="button" data-dtrm="${zone}" data-i="${i}" title="Weghalen">✕</button></span>`;
-  $('dtRij').innerHTML = DT.rij.map((k,i)=>chip(k,DT_VELDEN[k].n,'rij',i,DT.rij.length)).join('') || '<span class="leeg">geen</span>';
-  $('dtKol').innerHTML = DT.kol.map((k,i)=>chip(k,DT_VELDEN[k].n,'kol',i,DT.kol.length)).join('') || '<span class="leeg">geen</span>';
-  $('dtVal').innerHTML = DT.val.map((m,i)=>chip('',dtMLabel(m),'val',i,DT.val.length)).join('') || '<span class="leeg">geen</span>';
-  const vrij = Object.keys(DT_VELDEN).filter(k=>!DT.rij.includes(k)&&!DT.kol.includes(k));
-  const opt = (id,lab) => { $(id).innerHTML = `<option value="">${lab}</option>` + vrij.map(k=>`<option value="${k}">${DT_VELDEN[k].n}</option>`).join(''); };
-  opt('dtRijAdd','+ veld toevoegen'); opt('dtKolAdd','+ veld toevoegen');
-  if(!$('dtValVeld').options.length){
-    $('dtValVeld').innerHTML = Object.entries(DT_MAAT).map(([k,v])=>`<option value="${k}">${v.n}</option>`).join('');
-    $('dtValAgg').innerHTML = Object.entries(DT_AGG).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
-  }
+  dtKnoppen();
   // gegevens
   const t = $('dtZoek').value.toLowerCase();
   const r = D.bez.filter(x=>!t || [x.obj,x.sub,x.opm,locName(x.loc||''),afdNaam(x.afd)].join(' ').toLowerCase().includes(t));
@@ -909,6 +915,7 @@ function drawDT(){
   const keys = []; const seen=new Set();
   r.forEach(x=>{ const k=ck(x), s=JSON.stringify(k); if(!seen.has(s)){ seen.add(s); keys.push(k); } });
   keys.sort((a,b)=>{ for(let i=0;i<a.length;i++){ const c=dtSort(DT.kol[i])(a[i],b[i]); if(c) return c; } return 0; });
+  if(!DT.kol.length) keys.length = 0;   // geen kolommen: alleen de totaalkolom(men)
   const kolNaam = k => k.join(' · ');
   // kop
   const nk = DT.kol.length, nm = M.length, hrows = nk + (nm>1?1:0) || 1;
@@ -959,16 +966,59 @@ $('dtTab').addEventListener('click', e=>{
   alleOpen(); $('infoTitel').textContent = titel; renderInfo(); $('dlgInfo').showModal();
 });
 $('dtTab').addEventListener('contextmenu', e=>{ const c=e.target.closest('td[data-dtc]'); if(!c) return; e.preventDefault(); c.dispatchEvent(new MouseEvent('click',{bubbles:true})); });
-document.querySelector('#dt .dtcfg').addEventListener('click', e=>{
-  const rm=e.target.closest('[data-dtrm]'), mv=e.target.closest('[data-dtmv]');
-  if(rm){ DT[rm.dataset.dtrm].splice(+rm.dataset.i,1); }
-  else if(mv){ const a=DT[mv.dataset.dtmv], i=+mv.dataset.i, j=i+(+mv.dataset.d); [a[i],a[j]]=[a[j],a[i]]; }
-  else return;
-  DTOPEN.clear(); dtBewaar(); drawDT();
+// --- keuzelijsten (zoals: klik in de volgorde die je wilt) ---
+const dtNaam = (zone,k) => zone==='val' ? dtMLabel(k) : DT_VELDEN[k].n;
+function dtKnoppen(){
+  document.querySelectorAll('#dt .dtbtn').forEach(b=>{
+    const z=b.dataset.zone, lijst = DT[z];
+    b.querySelector('.dtsel').textContent = lijst.length ? lijst.map(k=>dtNaam(z,k)).join(', ') : 'Niets';
+    const pop = document.querySelector(`#dt .dtpop[data-zone="${z}"]`);
+    b.classList.toggle('open', !pop.hidden);
+    if(!pop.hidden) dtPop(z);
+  });
+}
+function dtPop(z){
+  const pop = document.querySelector(`#dt .dtpop[data-zone="${z}"]`);
+  let h = '<div class="uitleg">Klik in de volgorde die je wilt</div>';
+  if(z==='val'){
+    Object.entries(DT_MAAT).forEach(([k,m])=>{
+      const i = DT.val.findIndex(v=>v.m===k), on = i>=0;
+      h += `<div class="it${on?' on':''}" data-k="${k}"><span class="rnd">${on?i+1:''}</span>${esc(m.n)}${on?`<select data-agg="${i}">${Object.entries(DT_AGG).map(([a,n])=>`<option value="${a}"${DT.val[i].a===a?' selected':''}>${n}</option>`).join('')}</select>`:''}</div>`;
+    });
+  } else {
+    const ander = z==='rij' ? 'kol' : 'rij';
+    Object.entries(DT_VELDEN).forEach(([k,v])=>{
+      const i = DT[z].indexOf(k), on = i>=0, el = DT[ander].includes(k);
+      h += `<div class="it${on?' on':''}${el?' elders':''}" data-k="${k}"><span class="rnd">${on?i+1:''}</span>${esc(v.n)}${el?`<span class="waar">in ${ander==='kol'?'kolommen':'rijen'}</span>`:''}</div>`;
+    });
+  }
+  h += '<div class="voet"><button type="button" data-niets>Niets</button><button type="button" data-klaar>Klaar</button></div>';
+  pop.innerHTML = h;
+}
+document.querySelectorAll('#dt .dtbtn').forEach(b=>b.onclick=e=>{
+  e.stopPropagation();
+  const z=b.dataset.zone;
+  document.querySelectorAll('#dt .dtpop').forEach(p=>{ p.hidden = p.dataset.zone===z ? !p.hidden : true; });
+  dtKnoppen();
 });
-$('dtRijAdd').onchange = e=>{ if(e.target.value){ DT.rij.push(e.target.value); DTOPEN.clear(); dtBewaar(); drawDT(); } };
-$('dtKolAdd').onchange = e=>{ if(e.target.value){ DT.kol.push(e.target.value); dtBewaar(); drawDT(); } };
-$('dtValAdd').onclick = ()=>{ DT.val.push({m:$('dtValVeld').value, a:$('dtValAgg').value}); dtBewaar(); drawDT(); };
+document.querySelectorAll('#dt .dtpop').forEach(pop=>{
+  pop.addEventListener('click', e=>{
+    e.stopPropagation();
+    const z = pop.dataset.zone;
+    if(e.target.closest('select')) return;
+    if(e.target.closest('[data-klaar]')){ pop.hidden=true; dtKnoppen(); return; }
+    if(e.target.closest('[data-niets]')){ DT[z]=[]; }
+    else {
+      const it = e.target.closest('.it'); if(!it) return; const k = it.dataset.k;
+      if(z==='val'){ const i=DT.val.findIndex(v=>v.m===k); if(i>=0) DT.val.splice(i,1); else DT.val.push({m:k,a:'som'}); }
+      else { const ander = z==='rij'?'kol':'rij'; const i=DT[z].indexOf(k);
+        if(i>=0) DT[z].splice(i,1); else { DT[ander]=DT[ander].filter(x=>x!==k); DT[z].push(k); } }
+    }
+    DTOPEN.clear(); dtBewaar(); drawDT();
+  });
+  pop.addEventListener('change', e=>{ const s=e.target.closest('select[data-agg]'); if(!s) return; DT.val[+s.dataset.agg].a = s.value; dtBewaar(); drawDT(); });
+});
+document.addEventListener('click', e=>{ if(!e.target.closest('#dt .dtpick')){ let x=false; document.querySelectorAll('#dt .dtpop').forEach(p=>{ if(!p.hidden){ p.hidden=true; x=true; } }); if(x) dtKnoppen(); } });
 $('dtStd').onclick = ()=>{ DT=JSON.parse(JSON.stringify(DT_STD)); DTOPEN.clear(); dtBewaar(); drawDT(); };
 $('dtZoek').oninput = drawDT;
 $('dtOpen').onclick = ()=>{ // alle groepen (behalve het laatste niveau) open
