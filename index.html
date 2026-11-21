@@ -294,6 +294,12 @@ button.sbtn.leeg{background:#fff;color:#7a3e10;border:1px dashed #7a3e10}
 .samtekst ul{margin:4px 0 8px;padding-left:20px}
 .samtekst p{margin:4px 0}
 #samInvoer{min-height:45vh;font-family:inherit;font-size:14px}
+.jaarbtn{background:#e8f0fe!important;font-weight:700}
+.dtpop .jnieuw{display:flex;flex-direction:column;gap:6px;border-top:1px solid #ddd;margin-top:6px;padding-top:8px}
+.dtpop .jnieuw button{text-align:left;padding:6px 8px;border:1px solid #ccd;border-radius:6px;background:#fff;cursor:pointer;font:inherit}
+.dtpop .jnieuw button:hover{background:#eef4ff}
+.dtpop .jnieuw .gevaar{color:#b00020}
+.dt td.vsplus{color:#0a7a2f;font-weight:700}.dt td.vsmin{color:#b00020;font-weight:700}.dt td.vs0{color:#888}.dt .vsp{font-weight:normal;font-size:.85em}
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -304,7 +310,7 @@ button.sbtn.leeg{background:#fff;color:#7a3e10;border:1px dashed #7a3e10}
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.47</span>
+  <span class="versie" title="Versie">v1.48</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="histBtn" hidden title="Wie heeft wat gewijzigd">🕘 Geschiedenis</button>
@@ -388,6 +394,7 @@ button.sbtn.leeg{background:#fff;color:#7a3e10;border:1px dashed #7a3e10}
     <div class="card">
       <h2>Kassen <span style="float:right"><button type="button" class="btn klein" id="docBtn" title="Maak een overzicht zoals de polis, om af te drukken of als PDF te bewaren">📄 Polisdocument</button> <button type="button" class="btn klein" id="dtPrint">🖨 Afdrukken / PDF</button> <button type="button" class="btn klein" id="dtStd">↺ Standaard</button></span></h2>
       <div class="dtbar">
+        <div class="dtpick"><div class="dtlab">Jaar</div><button type="button" class="dtbtn jaarbtn" data-zone="jaar"><span class="dtsel"></span> ▾</button><div class="dtpop" data-zone="jaar" hidden></div></div>
         <div class="dtpick"><div class="dtlab">Groeperen (rijen)</div><button type="button" class="dtbtn" data-zone="rij"><span class="dtsel"></span> ▾</button><div class="dtpop" data-zone="rij" hidden></div></div>
         <div class="dtpick"><div class="dtlab">Kolommen</div><button type="button" class="dtbtn" data-zone="kol"><span class="dtsel"></span> ▾</button><div class="dtpop" data-zone="kol" hidden></div></div>
         <div class="dtpick"><div class="dtlab">Waarden</div><button type="button" class="dtbtn" data-zone="val"><span class="dtsel"></span> ▾</button><div class="dtpop" data-zone="val" hidden></div></div>
@@ -741,7 +748,9 @@ async function promilleVullen(){
 const ADRES_STD = { '199':'Legmeerdijk 199, 1432 KA Aalsmeer', '207':'Legmeerdijk 207, Aalsmeer', '250':'Legmeerdijk 250, Aalsmeer' };
 const adresVan = loc => { try{ return localStorage.getItem('adres-'+loc) || ADRES_STD[loc] || locName(loc); }catch(e){ return ADRES_STD[loc] || locName(loc); } };
 function maakDocument(){
-  const r = D.bez.filter(x=>dtZoekOk(x) && dtFiltOk(x));
+  let r = D.bez.filter(x=>dtZoekOk(x) && dtFiltOk(x));
+  let docJaar = '';
+  if(heeftJaren()){ const J=[...new Set(r.map(jaarVan))].sort((a,b)=>b.localeCompare(a,'nl',{numeric:true})); docJaar=J[0]||''; if(J.length>1){ r=r.filter(x=>jaarVan(x)===docJaar); toast('Polisdocument toont alleen jaar '+docJaar); } }
   if(!r.length){ alert('Er is niets om te tonen. Pas de filters aan.'); return; }
   const n2 = (n,d=2) => n==null ? '' : Number(n).toLocaleString('nl-NL',{minimumFractionDigits:d,maximumFractionDigits:d});
   const n0 = n => n==null ? '' : Number(n).toLocaleString('nl-NL',{maximumFractionDigits:2});
@@ -790,7 +799,7 @@ tfoot td{border-top:1px solid #000;font-weight:bold;padding-top:4px}
 @media print{ .bar{display:none} body{margin:12mm} .edit{border:0} }
 </style></head><body>
 <div class="bar"><button onclick="window.print()">🖨 Afdrukken / PDF</button><span>Tip: klik op een adres om het aan te passen. Kies bij afdrukken "Opslaan als PDF".</span></div>
-<h1>Polisoverzicht kassen – eigen opgave</h1>
+<h1>Polisoverzicht kassen${docJaar?' '+esc(docJaar):''} – eigen opgave</h1>
 <div class="kop">Datum: ${new Date().toLocaleDateString('nl-NL')}${filters?' &nbsp;·&nbsp; Selectie: '+esc(filters):''}</div>
 ${body}
 <div class="eind"><span>Totaal verzekerd bedrag: € ${n2(tW,0)}</span><span>Totaal premie: € ${n2(tP)}</span></div>
@@ -905,11 +914,18 @@ function kiesWie(){
   });
 }
 const SECNAAM = { bedrijf:'Zakelijk', prive:'Privé', priveNotes:'Notities', bez:'Kassen', tijd:'Aandachtspunten', extra:'Links', contacten:'Contacten', dtviews:'Draaitabel-weergaven' };
-const VELD = { wat:'Wat', cat:'Categorie', mij:'Maatschappij', polis:'Polisnummer', verz:'Verzekerd', actie:'Actie', premie:'Premie', opm:'Opmerking', link:'Link', nr:'Nr',
+const VELD = { jaar:'Jaar', wat:'Wat', cat:'Categorie', mij:'Maatschappij', polis:'Polisnummer', verz:'Verzekerd', actie:'Actie', premie:'Premie', opm:'Opmerking', link:'Link', nr:'Nr',
   loc:'Locatie', afd:'Afdeling', sub:'Soort', obj:'Object', aantal:'Aantal', eenh:'Eenheid', prijs:'Prijs', waarde:'Waarde', promille:'Premie ‰', dekking:'Dekking',
   tekst:'Tekst', datum:'Datum', wie:'Aanwezig', punten:'Punten', naam:'Naam', org:'Maatschappij', rol:'Rol', tel:'Telefoon', mob:'Mobiel', email:'E-mail', web:'Website', login:'Klantportaal', adres:'Adres', klantnr:'Klantnummer', files:'Bestanden', samenvatting:'Samenvatting', samDatum:'Datum samenvatting', samDoor:'Samenvatting door' };
 const itemNaam = x => x ? (x.wat||x.obj||x.tekst||x.naam||x.datum||'?') + (x.loc?` (${locName(x.loc)}${x.afd&&x.afd!=='-'?' · '+x.afd:''})`:'') : '?';
 const toonW = (k,v) => v==null||v==='' ? '–' : k==='files' ? (v.length+' bestand'+(v.length===1?'':'en')) : k==='punten' ? (v.length+' punten') : typeof v==='number' ? nf(v) : String(v);
+function bundel(r, naam){ // veel wijzigingen tegelijk = één regel in de geschiedenis
+  const b = r[0];
+  return { t:b.t, wie:b.wie, email:b.email, sec:b.sec, actie:'bulk', id:'', naam,
+    add:r.filter(h=>h.actie==='toegevoegd').map(h=>h.id),
+    del:r.filter(h=>h.actie==='verwijderd').map(h=>h.voor),
+    mod:r.filter(h=>h.actie==='gewijzigd').map(h=>({id:h.id, voor:h.voor})) };
+}
 function verschil(sec, oud, nieuw){
   const t = new Date().toISOString(), basis = { t, wie:wieNaam(), email:USER?.email||'', sec };
   const O = new Map(oud.map(x=>[x.id,x])), N = new Map(nieuw.map(x=>[x.id,x])), out=[];
@@ -937,7 +953,8 @@ function tekenHist(){
   $('histInhoud').innerHTML = '<table class="hist"><thead><tr><th>Wanneer</th><th>Wie</th><th>Wat</th><th>Details</th><th></th></tr></thead><tbody>' + r.map(h=>{
     let det='';
     if(h.actie==='gewijzigd') det = Object.keys(h.na||{}).map(k=>`<div class="wz"><b>${esc(VELD[k]||k)}:</b> <span class="oud">${esc(toonW(k,h.voor?.[k]))}</span> → <span class="nw">${esc(toonW(k,h.na[k]))}</span></div>`).join('');
-    const icoon = h.actie==='toegevoegd'?'➕':h.actie==='verwijderd'?'🗑️':'✏️';
+    if(h.actie==='bulk') det = [h.add?.length?`${h.add.length} toegevoegd`:'', h.del?.length?`${h.del.length} verwijderd`:'', h.mod?.length?`${h.mod.length} gewijzigd`:''].filter(Boolean).join(' · ');
+    const icoon = h.actie==='bulk'?'📦':h.actie==='toegevoegd'?'➕':h.actie==='verwijderd'?'🗑️':'✏️';
     return `<tr><td style="white-space:nowrap">${new Date(h.t).toLocaleString('nl-NL',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</td><td><b>${esc(h.wie)}</b></td><td>${icoon} ${esc(SECNAAM[h.sec]||h.sec)} · ${esc(h.naam)} <span class="muted">${esc(h.actie)}</span></td><td>${det}</td><td>${EDIT&&!h.terug?`<button type="button" data-terug="${h.i}" title="Deze wijziging ongedaan maken">↩ Terugzetten</button>`:''}</td></tr>`;
   }).join('') + '</tbody></table>';
 }
@@ -947,6 +964,12 @@ $('histInhoud').addEventListener('click', async e=>{
   const b=e.target.closest('[data-terug]'); if(!b) return;
   const h=HIST[+b.dataset.terug]; if(!h || !confirm(`"${h.naam}" terugzetten naar hoe het was vóór deze wijziging?`)) return;
   await opslaan(h.sec, items=>{
+    if(h.actie==='bulk'){
+      const weg=new Set(h.add||[]); let it=items.filter(x=>!weg.has(x.id));
+      (h.del||[]).forEach(v=>{ if(!it.some(x=>x.id===v.id)) it.push(v); });
+      const M=new Map((h.mod||[]).map(m=>[m.id,m.voor]));
+      return it.map(x=>{ const v=M.get(x.id); if(!v) return x; const y={...x}; Object.entries(v).forEach(([k,w])=>{ if(w==null) delete y[k]; else y[k]=w; }); return y; });
+    }
     if(h.actie==='toegevoegd') return items.filter(x=>x.id!==h.id);
     if(h.actie==='verwijderd') return items.some(x=>x.id===h.id) ? items : [...items, h.voor];
     return items.map(x=>{ if(x.id!==h.id) return x; const y={...x}; Object.entries(h.voor||{}).forEach(([k,v])=>{ if(v==null) delete y[k]; else y[k]=v; }); return y; });
@@ -955,6 +978,13 @@ $('histInhoud').addEventListener('click', async e=>{
 });
 
 // ---------- draaitabel ----------
+// jaren: elk object in Kassen kan een jaar hebben
+const jaarVan = x => String(x.jaar??'').trim() || 'Geen jaar';
+const heeftJaren = () => D.bez.some(x=>String(x.jaar??'').trim());
+const jaren = () => [...new Set(D.bez.map(jaarVan))].sort((a,b)=>b.localeCompare(a,'nl',{numeric:true}));
+const jaarNaast = () => DT.kol.includes('jaar') || DT.rij.includes('jaar');
+const dtJaar = () => { if(!heeftJaren()) return 'alle'; const J=jaren(); return DT.jaar==='alle' || J.includes(DT.jaar) ? DT.jaar : J[0]; };
+const dtJaarOk = x => { const j=dtJaar(); return j==='alle' || jaarNaast() || jaarVan(x)===j; };
 const DT_VELDEN = {
   loc:{n:'Locatie', g:x=>locName(x.loc||'?'), sort:(a,b)=>a.localeCompare(b,'nl',{numeric:true})},
   afd:{n:'Afdeling', g:x=>afdNaam(x.afd), sort:afdSort},
@@ -962,6 +992,7 @@ const DT_VELDEN = {
   obj:{n:'Object', g:x=>objNaam(objKey(x))},
   eenh:{n:'Eenheid', g:x=>((x.eenh||'').trim()||'stuks').toLowerCase().replace(/^stuk$/,'stuks')},
   dekking:{n:'Dekking', g:x=>x.dekking||'A'},
+  jaar:{n:'Jaar', g:x=>jaarVan(x), sort:(a,b)=>a.localeCompare(b,'nl',{numeric:true})},
 };
 const DT_MAAT = {
   waarde:{n:'Waarde', v:x=>x.waarde, f:eur0},
@@ -997,8 +1028,8 @@ const dtFmt = (n,m) => n==null ? '' : m.a==='tel' ? nf(n) : DT_MAAT[m.m].f(n);
 const dtMLabel = m => DT_MAAT[m.m].n + (m.a==='som' ? '' : ' ('+DT_AGG[m.a]+')');
 let DTCELL = [];
 // filter per veld (uitgesloten waarden) en sorteren
-const DT_FVELDEN = ['loc','afd','sub','eenh','dekking'];
-const dtFiltOk = x => !DT.filt || Object.entries(DT.filt).every(([k,uit])=>!uit.length || !uit.includes(DT_VELDEN[k].g(x)));
+const DT_FVELDEN = ['jaar','loc','afd','sub','eenh','dekking'];
+const dtFiltOk = x => dtJaarOk(x) && (!DT.filt || Object.entries(DT.filt).filter(([k])=>DT_VELDEN[k]).every(([k,uit])=>!uit.length || !uit.includes(DT_VELDEN[k].g(x))));
 const dtZoekOk = x => { const t=$('dtZoek').value.toLowerCase(); return !t || [x.obj,x.sub,x.opm,locName(x.loc||''),afdNaam(x.afd)].join(' ').toLowerCase().includes(t); };
 function drawDT(){
   if(!D) return;
@@ -1020,6 +1051,14 @@ function drawDT(){
   const pijl = id => S && S.id===id ? (S.dir<0?' ▼':' ▲') : '';
   const thS = (id, label, cls, extra='') => `<th class="${cls} srt${S&&S.id===id?' srton':''}" data-dts="${esc(id)}" title="Klik om te sorteren"${extra}>${esc(label)}${pijl(id)}</th>`;
   const nk = DT.kol.length, nm = M.length, hrows = nk + (nm>1?1:0) || 1;
+  const VS = nk===1 && DT.kol[0]==='jaar' && keys.length>=2; // laatste kolom = verschil tussen de 2 nieuwste jaren
+  const totLab = VS ? `Verschil ${keys[keys.length-1][0]} t.o.v. ${keys[keys.length-2][0]}` : 'Totaal';
+  const vsCel = (items, m) => { const ja=keys[keys.length-1][0], jb=keys[keys.length-2][0];
+    const a=dtAgg(items.filter(x=>jaarVan(x)===ja),m), b=dtAgg(items.filter(x=>jaarVan(x)===jb),m);
+    if(a==null && b==null) return '<td class="nul ltot">–</td>';
+    const d=(a||0)-(b||0); if(Math.abs(d)<0.005) return '<td class="r ltot vs0">gelijk</td>';
+    const pct = b ? ` <span class="vsp">(${d>0?'+':'−'}${Math.abs(d/b*100).toLocaleString('nl-NL',{maximumFractionDigits:1})}%)</span>` : '';
+    return `<td class="r ltot ${d>0?'vsplus':'vsmin'}">${d>0?'+':'−'} ${dtFmt(Math.abs(d),m)}${pct}</td>`; };
   let h = '<thead>';
   for(let lvl=0; lvl<hrows; lvl++){
     h += '<tr>';
@@ -1029,7 +1068,7 @@ function drawDT(){
         if(lvl===nk-1 && nm===1) h += thS(sk(JSON.stringify(keys[i]),0), keys[i][lvl], 'c');
         else h += `<th class="c" colspan="${(j-i)*nm}">${esc(keys[i][lvl])}</th>`;
         i=j; }
-      if(lvl===0) h += nm===1 ? thS(sk('*',0),'Totaal','c ltot',` rowspan="${nk}"`) : `<th class="c ltot" colspan="${nm}" rowspan="${nk}">Totaal</th>`;
+      if(lvl===0) h += nm===1 ? thS(sk('*',0),totLab,'c ltot',` rowspan="${nk}"`) : `<th class="c ltot" colspan="${nm}" rowspan="${nk}">${esc(totLab)}</th>`;
     } else if(nm>1){
       keys.forEach(k=>M.forEach((m,mi)=>h+=thS(sk(JSON.stringify(k),mi), dtMLabel(m), 'r asub')));
       M.forEach((m,mi)=>h+=thS(sk('*',mi), dtMLabel(m), 'r asub ltot'));
@@ -1041,7 +1080,7 @@ function drawDT(){
   h += '</thead><tbody>';
   const rijCellen = (items, filtR, titel) => keys.map(k=>{ const ks=JSON.stringify(k); const it=items.filter(x=>JSON.stringify(ck(x))===ks);
       return M.map(m=>cel(it,m,x=>filtR(x)&&JSON.stringify(ck(x))===ks, titel+(nk?' – '+kolNaam(k):''))).join(''); }).join('')
-    + M.map(m=>cel(items,m,filtR,titel,'ltot')).join('');
+    + M.map(m=>VS ? vsCel(items,m) : cel(items,m,filtR,titel,'ltot')).join('');
   // sorteerwaarde van een groep
   const sv = items => { if(!S) return 0; const i=S.id.lastIndexOf('|'); const kk=S.id.slice(0,i), mi=+S.id.slice(i+1); const m=M[mi]; if(!m) return 0;
     const it = kk==='*' ? items : items.filter(x=>JSON.stringify(ck(x))===kk); const n=dtAgg(it,m); return n==null ? -Infinity : n; };
@@ -1062,7 +1101,8 @@ function drawDT(){
   $('dtTab').innerHTML = h;
   // filter-info
   const nf_ = Object.values(DT.filt||{}).reduce((a,u)=>a+u.length,0);
-  $('dtFiltInfo').textContent = nf_ ? `Filter actief: ${nf_} waarde${nf_>1?'n':''} verborgen · ${r.length} van ${D.bez.length} regels` : '';
+  const jt = !heeftJaren() ? '' : jaarNaast() ? 'Jaren naast elkaar' : dtJaar()==='alle' ? 'Alle jaren opgeteld' : 'Jaar '+dtJaar();
+  $('dtFiltInfo').textContent = [jt, nf_ ? `Filter actief: ${nf_} waarde${nf_>1?'n':''} verborgen · ${r.length} van ${D.bez.length} regels` : ''].filter(Boolean).join(' · ');
 }
 // sorteren door op een kop te klikken: hoog→laag, laag→hoog, uit
 $('dtTab').addEventListener('click', e=>{
@@ -1082,7 +1122,7 @@ $('dtTab').addEventListener('click', e=>{
   const f = x => filt(x) && dtZoekOk(x) && dtFiltOk(x);
   const items = D.bez.filter(f);
   const een = g => { const v=[...new Set(items.map(g))]; return v.length===1?v[0]:''; };
-  INFO = { items, open:new Set(), mode:'afd', filt:f, preset:{ sub:een(x=>x.sub), loc:een(x=>x.loc), afd:een(x=>x.afd), obj:'' } };
+  INFO = { items, open:new Set(), mode:'afd', filt:f, preset:{ jaar:een(x=>x.jaar), sub:een(x=>x.sub), loc:een(x=>x.loc), afd:een(x=>x.afd), obj:'' } };
   alleOpen(); $('infoTitel').textContent = titel; renderInfo(); $('dlgInfo').showModal();
 });
 $('dtTab').addEventListener('contextmenu', e=>{ const c=e.target.closest('td[data-dtc]'); if(!c) return; e.preventDefault(); c.dispatchEvent(new MouseEvent('click',{bubbles:true})); });
@@ -1091,10 +1131,11 @@ const dtNaam = (zone,k) => zone==='val' ? dtMLabel(k) : DT_VELDEN[k].n;
 function dtKnoppen(){
   document.querySelectorAll('#dt .dtbtn').forEach(b=>{
     const z=b.dataset.zone, lijst = DT[z]||[];
-    b.querySelector('.dtsel').textContent = z==='filt' ? (()=>{ const n=Object.values(DT.filt||{}).reduce((a,u)=>a+u.length,0); return n?`${n} verborgen`:'Alles'; })() : z==='view' ? (DT.naam||'Kies…') : (lijst.length ? lijst.map(k=>dtNaam(z,k)).join(', ') : 'Niets');
+    b.querySelector('.dtsel').textContent = z==='filt' ? (()=>{ const n=Object.values(DT.filt||{}).reduce((a,u)=>a+u.length,0); return n?`${n} verborgen`:'Alles'; })() : z==='view' ? (DT.naam||'Kies…') : z==='jaar' ? (!heeftJaren() ? 'Nog geen jaren' : jaarNaast() ? 'Naast elkaar' : dtJaar()==='alle' ? 'Alle jaren' : dtJaar()) : (lijst.length ? lijst.map(k=>dtNaam(z,k)).join(', ') : 'Niets');
     const pop = document.querySelector(`#dt .dtpop[data-zone="${z}"]`);
     b.classList.toggle('open', !pop.hidden);
     if(!pop.hidden && z!=='filt') dtPop(z);
+    if(z==='jaar') b.classList.toggle('jaarbtn', true);
   });
 }
 function dtPop(z){
@@ -1108,6 +1149,23 @@ function dtPop(z){
         vals.map(v=>`<label class="fit"><input type="checkbox" data-fk="${k}" value="${esc(v)}"${uit.includes(v)?'':' checked'}> ${esc(v)}</label>`).join('') + '</div>';
     });
     h += '</div><div class="voet"><button type="button" data-niets>Alles tonen</button><button type="button" data-klaar>Klaar</button></div>';
+    pop.innerHTML = h; return;
+  }
+  if(z==='jaar'){
+    const J = heeftJaren() ? jaren() : [], j = dtJaar(), nst = jaarNaast();
+    let h = '<div class="uitleg">Welk jaar wil je zien?</div>';
+    if(!J.length) h += '<div class="muted" style="padding:6px 4px">Er zijn nog geen jaren. Maak hieronder een nieuw jaar; de huidige gegevens krijgen dan ook een jaar.</div>';
+    else {
+      h += J.map(v=>`<div class="it${!nst&&j===v?' on':''}" data-jaar="${esc(v)}"><span class="rnd">${!nst&&j===v?'✓':''}</span>${esc(v)} <span class="waar">${D.bez.filter(x=>jaarVan(x)===v).length} regels</span></div>`).join('');
+      h += `<div class="it${!nst&&j==='alle'?' on':''}" data-jaar="alle"><span class="rnd">${!nst&&j==='alle'?'✓':''}</span>Alle jaren opgeteld</div>`;
+      h += `<div class="it${nst?' on':''}" data-jnaast><span class="rnd">${nst?'✓':''}</span>📊 Jaren naast elkaar (vergelijken)</div>`;
+    }
+    if(BEHEER){
+      h += '<div class="jnieuw"><button type="button" data-jnieuw>➕ Nieuw jaar (kopie van vorig jaar)…</button>';
+      if(J.length>1 && j!=='alle' && !nst) h += `<button type="button" class="gevaar" data-jdel>🗑 Jaar ${esc(j)} verwijderen…</button>`;
+      h += '</div>';
+    }
+    h += '<div class="voet"><button type="button" data-klaar>Klaar</button></div>';
     pop.innerHTML = h; return;
   }
   if(z==='view'){
@@ -1156,16 +1214,24 @@ document.querySelectorAll('#dt .dtpop').forEach(pop=>{
       else return;
       dtBewaar(); drawDT(); dtPop('filt'); return;
     }
+    if(z==='jaar'){
+      const a=e.target.closest('[data-jaar]');
+      if(a){ DT.jaar=a.dataset.jaar; DT.kol=DT.kol.filter(k=>k!=='jaar'); DT.rij=DT.rij.filter(k=>k!=='jaar'); DTOPEN.clear(); dtBewaar(); pop.hidden=true; drawDT(); return; }
+      if(e.target.closest('[data-jnaast]')){ if(!jaarNaast()){ DT.rij=DT.rij.filter(k=>k!=='jaar'); DT.kol=['jaar']; } DT.naam=''; DTOPEN.clear(); dtBewaar(); pop.hidden=true; drawDT(); return; }
+      if(e.target.closest('[data-jnieuw]')){ pop.hidden=true; dtKnoppen(); nieuwJaar(); return; }
+      if(e.target.closest('[data-jdel]')){ pop.hidden=true; dtKnoppen(); jaarWeg(); return; }
+      return;
+    }
     if(z==='view'){
       const del=e.target.closest('[data-vdel]'), sv=e.target.closest('[data-vsave]'), it=e.target.closest('[data-vid]');
       if(del){ const v=(D.dtviews||[]).find(x=>x.id===del.dataset.vdel); if(v && confirm(`Weergave "${v.naam}" verwijderen?`)) opslaan('dtviews', items=>items.filter(x=>x.id!==v.id), 'Weergave verwijderd').then(()=>dtKnoppen()); return; }
       if(sv){ const naam=($('vNaam').value||'').trim(); if(!naam){ alert('Geef de weergave een naam.'); return; }
-        const cfg = { naam, rij:[...DT.rij], kol:[...DT.kol], val:DT.val.map(v=>({...v})), filt:JSON.parse(JSON.stringify(DT.filt||{})), sort:DT.sort?{...DT.sort}:null };
+        const cfg = { naam, rij:[...DT.rij], kol:[...DT.kol], val:DT.val.map(v=>({...v})), filt:JSON.parse(JSON.stringify(DT.filt||{})), sort:DT.sort?{...DT.sort}:null, jaar:DT.jaar||'' };
         const bestaand=(D.dtviews||[]).find(x=>x.naam.toLowerCase()===naam.toLowerCase());
         opslaan('dtviews', items=> bestaand ? items.map(x=>x.id===bestaand.id?{...x,...cfg}:x) : [...items, {id:newId(), ...cfg}], 'Weergave opgeslagen').then(()=>{ DT.naam=naam; dtBewaar(); dtKnoppen(); });
         return; }
       if(it){ const v=(D.dtviews||[]).find(x=>x.id===it.dataset.vid); if(!v) return;
-        DT = { rij:[...v.rij], kol:[...v.kol], val:v.val.map(x=>({...x})), filt:JSON.parse(JSON.stringify(v.filt||{})), sort:v.sort?{...v.sort}:null, naam:v.naam };
+        DT = { rij:[...v.rij], kol:[...v.kol], val:v.val.map(x=>({...x})), filt:JSON.parse(JSON.stringify(v.filt||{})), sort:v.sort?{...v.sort}:null, naam:v.naam, jaar:v.jaar||DT.jaar };
         DTOPEN.clear(); dtBewaar(); pop.hidden=true; drawDT(); }
       return;
     }
@@ -1202,12 +1268,12 @@ th{background:#ddd}.r{text-align:right;white-space:nowrap}.c{text-align:center}.
 tr.d0 td{font-weight:bold}.aantal{color:#777;font-weight:normal;margin-left:5px}.nul{color:#bbb;text-align:center}tfoot td{font-weight:bold;background:#e8eefc}
 @media print{.bar{display:none}body{margin:10mm}}
 </style></head><body><div class="bar"><button onclick="window.print()">🖨 Afdrukken / PDF</button></div>
-<h1>Kassen${DT.naam?' – '+esc(DT.naam):''}</h1>
+<h1>Kassen${heeftJaren()&&!jaarNaast()&&dtJaar()!=='alle'?' '+esc(dtJaar()):''}${DT.naam?' – '+esc(DT.naam):''}</h1>
 <div class="sub">${new Date().toLocaleDateString('nl-NL')} · ${esc(inst.join(' · '))}${zk?' · zoek: '+esc(zk):''}${fi?'<br>'+esc(fi):''}</div>
 ${tab.outerHTML}</body></html>`);
   w.document.close();
 };
-$('dtStd').onclick = ()=>{ DT=JSON.parse(JSON.stringify(DT_STD)); DT.filt={}; DT.sort=null; DT.naam=''; DTOPEN.clear(); dtBewaar(); drawDT(); };
+$('dtStd').onclick = ()=>{ const jr=DT.jaar; DT=JSON.parse(JSON.stringify(DT_STD)); DT.jaar=jr; DT.filt={}; DT.sort=null; DT.naam=''; DTOPEN.clear(); dtBewaar(); drawDT(); };
 $('dtZoek').oninput = drawDT;
 $('dtOpen').onclick = ()=>{ // alle groepen (behalve het laatste niveau) open
   const t=$('dtZoek').value.toLowerCase();
@@ -1262,6 +1328,39 @@ $('samBewaar').onclick = async () => {
   toonSam(false);
 };
 
+async function nieuwJaar(){
+  if(!BEHEER){ alert('Alleen de beheerder kan een nieuw jaar maken.'); return; }
+  const nu = new Date().getFullYear();
+  let basis = '';
+  if(!heeftJaren()){
+    basis = (prompt('De gegevens die er nu staan krijgen eerst een jaar.\n\nBij welk jaar horen de huidige gegevens?', String(nu-1))||'').trim();
+    if(!basis) return;
+  }
+  const J = basis ? [basis] : jaren().filter(j=>j!=='Geen jaar');
+  const van = basis || (dtJaar()!=='alle' && !jaarNaast() && dtJaar()!=='Geen jaar' ? dtJaar() : J[0]);
+  const voorstel = /^\d{4}$/.test(van) ? String(Number(van)+1) : String(nu);
+  const nieuw = (prompt(`Nieuw jaar maken.\nAlle objecten van ${van} worden gekopieerd naar het nieuwe jaar.\n${van} blijft bewaard zoals het is.\n\nWelk jaar wordt het nieuwe jaar?`, voorstel)||'').trim();
+  if(!nieuw) return;
+  if(nieuw===van || J.includes(nieuw)){ alert(`Jaar ${nieuw} bestaat al.`); return; }
+  const n = D.bez.filter(x=> basis ? !String(x.jaar??'').trim() : jaarVan(x)===van).length;
+  if(!n){ alert('Er zijn geen objecten om te kopiëren.'); return; }
+  if(!confirm(`${n} objecten van ${van} kopiëren naar ${nieuw}?\n\nTip: maak eerst een ⬇ Back-up.\nJe kunt dit later terugzetten via Geschiedenis.`)) return;
+  await opslaan('bez', items=>{
+    if(basis) items.forEach(x=>{ if(!String(x.jaar??'').trim()) x.jaar = basis; });
+    const kop = items.filter(x=>jaarVan(x)===van).map(x=>{ const y={...x, id:newId(), jaar:nieuw}; delete y.files; return y; });
+    return [...items, ...kop];
+  }, `Jaar ${nieuw} gemaakt (kopie van ${van})`);
+  DT.jaar = nieuw; DT.kol=DT.kol.filter(k=>k!=='jaar'); DT.rij=DT.rij.filter(k=>k!=='jaar'); DTOPEN.clear(); dtBewaar(); drawDT();
+}
+async function jaarWeg(){
+  const j = dtJaar(); if(!BEHEER || j==='alle' || jaren().length<2) return;
+  const n = D.bez.filter(x=>jaarVan(x)===j).length;
+  const ok = (prompt(`Let op: alle ${n} objecten van ${j} worden verwijderd.\n\nTyp het jaar ${j} om te bevestigen:`)||'').trim();
+  if(ok!==j){ if(ok) alert('Niet verwijderd: het jaar klopt niet.'); return; }
+  await opslaan('bez', items=>items.filter(x=>jaarVan(x)!==j), `Jaar ${j} verwijderd`);
+  DT.jaar=''; dtBewaar(); drawDT();
+}
+
 // ---------- contacten ----------
 const norm = v => String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const heeftContact = m => m && D.contacten.some(c=>norm(c.org)===norm(m) || norm(c.naam)===norm(m));
@@ -1303,7 +1402,7 @@ $('seedC').onclick = () => {
 const POLIS = [['nr','Nr'],['wat','Wat verzekerd','text',1],['cat','Categorie','list'],['mij','Maatschappij','list'],['polis','Polisnummer'],['verz','Verzekerd','jn'],['actie','Actie nodig','jn'],['premie','Premie per jaar (€)','num'],['opm','Opmerking'],['link','Link naar document (Drive)','url']];
 const FIELDS = {
   bedrijf: POLIS, prive: POLIS,
-  bez: [['loc','Locatie (bijv. 199, 207, 250)','list'],['afd','Afdeling','list'],['sub','Soort','list'],['obj','Object','text',1],['aantal','Aantal','num'],['eenh','Eenheid','list'],['prijs','Prijs per eenheid (€)','num'],['waarde','Waarde (€) – leeg laten = aantal × prijs','num'],['promille','Premie per 1000 (bijv. 1 of 4,65)','num'],['dekking','Dekking (bijv. A)'],['opm','Opmerking'],['link','Link naar document (Drive)','url']],
+  bez: [['jaar','Jaar','list'],['loc','Locatie (bijv. 199, 207, 250)','list'],['afd','Afdeling','list'],['sub','Soort','list'],['obj','Object','text',1],['aantal','Aantal','num'],['eenh','Eenheid','list'],['prijs','Prijs per eenheid (€)','num'],['waarde','Waarde (€) – leeg laten = aantal × prijs','num'],['promille','Premie per 1000 (bijv. 1 of 4,65)','num'],['dekking','Dekking (bijv. A)'],['opm','Opmerking'],['link','Link naar document (Drive)','url']],
   priveNotes: [['tekst','Notitie','text',1],['link','Link (Drive)','url']],
   extra: [['tekst','Omschrijving','text',1],['link','Link','url',1]],
   contacten: [['naam','Naam (persoon of bedrijf)','text',1],['org','Maatschappij / bedrijf','list'],['rol','Rol (bijv. adviseur, schade melden)','list'],['tel','Telefoon'],['mob','Mobiel'],['email','E-mail','email'],['web','Website'],['login','Link klantportaal (inloggen)'],['adres','Adres'],['klantnr','Klantnummer / relatienummer'],['opm','Opmerking','area']],
@@ -1312,8 +1411,9 @@ const FIELDS = {
 const NAMEN = { bedrijf:'zakelijke polis', prive:'privé polis', bez:'object (kassen)', priveNotes:'notitie', extra:'link', tijd:'overleg', contacten:'contact' };
 
 function openForm(sec, id, preset){
-  const item = id ? D[sec].find(x=>x.id===id) : (preset || (sec==='prive'?{cat:'Privé'}:{}));
+  let item = id ? D[sec].find(x=>x.id===id) : (preset || (sec==='prive'?{cat:'Privé'}:{}));
   if(!item) return;
+  if(sec==='bez' && !id && !String(item.jaar??'').trim() && heeftJaren()) item = {...item, jaar: dtJaar()!=='alle' && !jaarNaast() ? dtJaar() : jaren()[0]};
   $('dlgTitel').textContent = (id?'Wijzig ':(sec==='bez'||sec==='contacten'?'Nieuw ':'Nieuwe ')) + NAMEN[sec];
   $('velden').innerHTML = FIELDS[sec].map(([k,l,t='text',req])=>{
     let v = item[k];
@@ -1350,7 +1450,8 @@ async function opslaan(sec, wijzig, melding){
       const nieuw = wijzig(oud.map(x=>({...x})));
       tx.set(ref, {items:nieuw});
       tx.set(metaRef, {gewijzigd:new Date().toISOString(), door:wieNaam()}, {merge:true});
-      const regels = verschil(sec, oud, nieuw);
+      let regels = verschil(sec, oud, nieuw);
+      if(regels.length>30) regels = [bundel(regels, melding)];
       if(regels.length){ const log = logSnap.exists()?(logSnap.data().items||[]):[]; tx.set(doc(db,'overzicht','log'), {items:[...log, ...regels].slice(-400)}); }
       return nieuw;
     });
