@@ -246,7 +246,7 @@ table.dt th.srton{color:var(--blue)}
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.39</span>
+  <span class="versie" title="Versie">v1.40</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="histBtn" hidden title="Wie heeft wat gewijzigd">🕘 Geschiedenis</button>
@@ -272,8 +272,7 @@ table.dt th.srton{color:var(--blue)}
 </div>
 <div id="app" hidden>
 <nav><div class="in">
-  <button data-t="bez" class="on">Kassen</button>
-  <button data-t="dt">Draaitabel</button>
+  <button data-t="dt" class="on">Kassen</button>
   <button data-t="bedrijf">Zakelijk</button>
   <button data-t="prive">Privé</button>
   <button data-t="tijd">Aandachtspunten</button>
@@ -304,14 +303,13 @@ table.dt th.srton{color:var(--blue)}
     <div class="card"><h2>Notities <button class="btn add" data-add="priveNotes">+ Toevoegen</button></h2><ul id="notes"></ul></div>
   </section>
 
-  <section id="bez" class="on">
+  <section id="bez" hidden>
     <div class="tools">
       <input type="search" id="qZ" placeholder="Zoek object…">
       <select id="lZ"><option value="">Alle locaties</option></select>
       <select id="aZ"><option value="">Alle afdelingen</option></select>
       <select id="sZ"><option value="">Alle soorten</option></select>
       <button class="btn add" data-add="bez">+ Toevoegen</button>
-      <button type="button" class="btn klein" id="docBtn" title="Maak een overzicht zoals de polis, om af te drukken of als PDF te bewaren">📄 Polisdocument</button>
     </div>
     <div class="card tw"><h2><span id="pZt">Totaal per soort en afdeling</span> <span style="float:right"><span id="pivMode" class="schakel" style="float:none;margin-right:8px"><button type="button" data-m="waarde">Waarde</button><button type="button" data-m="prijs">Stuksprijs</button><button type="button" data-m="aantal">Aantal</button><button type="button" data-m="promille">Premie ‰</button><button type="button" data-m="premie">Premie €</button></span><button type="button" class="btn klein" id="pivOpen">▼ Alles open</button> <button type="button" class="btn klein" id="pivDicht">▶ Alles dicht</button></span></h2><table id="pZ" class="piv"></table></div>
     <div class="card tw" hidden><h2>Alle objecten <span style="float:right"><button class="btn klein" id="zOpen">▼ Alles open</button> <button class="btn klein" id="zDicht">▶ Alles dicht</button></span></h2><table id="tZ"></table></div>
@@ -326,9 +324,9 @@ table.dt th.srton{color:var(--blue)}
     <div class="cgrid" id="cgrid"></div>
   </section>
 
-  <section id="dt">
+  <section id="dt" class="on">
     <div class="card">
-      <h2>Draaitabel – kassen <span style="float:right"><button type="button" class="btn klein" id="dtPrint">🖨 Afdrukken / PDF</button> <button type="button" class="btn klein" id="dtStd">↺ Standaard</button></span></h2>
+      <h2>Kassen <span style="float:right"><button type="button" class="btn klein" id="docBtn" title="Maak een overzicht zoals de polis, om af te drukken of als PDF te bewaren">📄 Polisdocument</button> <button type="button" class="btn klein" id="dtPrint">🖨 Afdrukken / PDF</button> <button type="button" class="btn klein" id="dtStd">↺ Standaard</button></span></h2>
       <div class="dtbar">
         <div class="dtpick"><div class="dtlab">Groeperen (rijen)</div><button type="button" class="dtbtn" data-zone="rij"><span class="dtsel"></span> ▾</button><div class="dtpop" data-zone="rij" hidden></div></div>
         <div class="dtpick"><div class="dtlab">Kolommen</div><button type="button" class="dtbtn" data-zone="kol"><span class="dtsel"></span> ▾</button><div class="dtpop" data-zone="kol" hidden></div></div>
@@ -337,7 +335,7 @@ table.dt th.srton{color:var(--blue)}
         <div class="dtpick"><div class="dtlab">Weergaven</div><button type="button" class="dtbtn" data-zone="view"><span class="dtsel"></span> ▾</button><div class="dtpop" data-zone="view" hidden></div></div>
       </div>
     </div>
-    <div class="tools"><input type="search" id="dtZoek" placeholder="Filter: zoek object, soort, opmerking…"><button type="button" class="btn klein" id="dtOpen">▼ Alles open</button><button type="button" class="btn klein" id="dtDicht">▶ Alles dicht</button></div>
+    <div class="tools"><input type="search" id="dtZoek" placeholder="Filter: zoek object, soort, opmerking…"><button type="button" class="btn klein" id="dtOpen">▼ Alles open</button><button type="button" class="btn klein" id="dtDicht">▶ Alles dicht</button><button class="btn add" data-add="bez">+ Object toevoegen</button></div>
     <div class="card tw"><div id="dtFiltInfo" class="muted" style="font-size:13px;margin-bottom:6px"></div><table id="dtTab" class="piv dt"></table></div>
   </section>
 
@@ -673,7 +671,7 @@ async function promilleVullen(){
 const ADRES_STD = { '199':'Legmeerdijk 199, 1432 KA Aalsmeer', '207':'Legmeerdijk 207, Aalsmeer', '250':'Legmeerdijk 250, Aalsmeer' };
 const adresVan = loc => { try{ return localStorage.getItem('adres-'+loc) || ADRES_STD[loc] || locName(loc); }catch(e){ return ADRES_STD[loc] || locName(loc); } };
 function maakDocument(){
-  const r = (PIV && PIV.r) || D.bez;
+  const r = D.bez.filter(x=>dtZoekOk(x) && dtFiltOk(x));
   if(!r.length){ alert('Er is niets om te tonen. Pas de filters aan.'); return; }
   const n2 = (n,d=2) => n==null ? '' : Number(n).toLocaleString('nl-NL',{minimumFractionDigits:d,maximumFractionDigits:d});
   const n0 = n => n==null ? '' : Number(n).toLocaleString('nl-NL',{maximumFractionDigits:2});
@@ -697,7 +695,7 @@ function maakDocument(){
     body += `<tfoot><tr><td></td><td colspan="4">Totaal ${esc(locName(loc))}</td><td class="r">${n2(lW,0)}</td><td class="lijn"></td><td class="r">${n2(lP)}</td></tr></tfoot></table></section>`;
     tW+=lW; tP+=lP;
   });
-  const filters = [ $('lZ').value?locName($('lZ').value):'', $('aZ').value, $('sZ').value, $('qZ').value?'zoek: '+$('qZ').value:'' ].filter(Boolean).join(' · ');
+  const filters = [ $('dtFiltInfo').textContent, $('dtZoek').value?'zoek: '+$('dtZoek').value:'' ].filter(Boolean).join(' · ');
   const html = `<!doctype html><html lang="nl"><head><meta charset="utf-8"><title>Polisoverzicht kassen</title>
 <style>
 body{font:13px/1.4 "Courier New",Courier,monospace;color:#111;margin:24px;background:#fff}
@@ -820,7 +818,7 @@ function zetPrive(open){
   if(D) render();
   return open;
 }
-$('pvSlot').onclick = () => { zetPrive(false); document.querySelector('nav button[data-t="bez"]').click(); toast('Privé vergrendeld 🔒'); };
+$('pvSlot').onclick = () => { zetPrive(false); document.querySelector('nav button[data-t="dt"]').click(); toast('Privé vergrendeld 🔒'); };
 $('pvWijzig').onclick = () => nieuwPw('🔑 Wachtwoord wijzigen');
 
 // ---------- wie bewerkt + geschiedenis ----------
@@ -1125,7 +1123,7 @@ $('dtPrint').onclick = () => {
   tab.querySelectorAll('.pijl').forEach(p=>p.remove());
   const inst = [`Rijen: ${DT.rij.map(k=>DT_VELDEN[k].n).join(', ')||'–'}`, `Kolommen: ${DT.kol.map(k=>DT_VELDEN[k].n).join(', ')||'–'}`, `Waarden: ${(DT.val.length?DT.val:[{m:'waarde',a:'som'}]).map(dtMLabel).join(', ')}`];
   const fi = $('dtFiltInfo').textContent, zk = $('dtZoek').value;
-  w.document.open(); w.document.write(`<!doctype html><html lang="nl"><head><meta charset="utf-8"><title>Draaitabel kassen</title><style>
+  w.document.open(); w.document.write(`<!doctype html><html lang="nl"><head><meta charset="utf-8"><title>Kassen</title><style>
 body{font:12px/1.4 Arial,Helvetica,sans-serif;color:#111;margin:20px}
 .bar{margin-bottom:14px}.bar button{font:700 14px Arial;padding:8px 16px;border-radius:6px;border:0;background:#1f5fc4;color:#fff;cursor:pointer}
 h1{font-size:17px;margin:0 0 4px}.sub{color:#555;margin-bottom:12px}
@@ -1134,7 +1132,7 @@ th{background:#ddd}.r{text-align:right;white-space:nowrap}.c{text-align:center}.
 tr.d0 td{font-weight:bold}.aantal{color:#777;font-weight:normal;margin-left:5px}.nul{color:#bbb;text-align:center}tfoot td{font-weight:bold;background:#e8eefc}
 @media print{.bar{display:none}body{margin:10mm}}
 </style></head><body><div class="bar"><button onclick="window.print()">🖨 Afdrukken / PDF</button></div>
-<h1>Draaitabel kassen${DT.naam?' – '+esc(DT.naam):''}</h1>
+<h1>Kassen${DT.naam?' – '+esc(DT.naam):''}</h1>
 <div class="sub">${new Date().toLocaleDateString('nl-NL')} · ${esc(inst.join(' · '))}${zk?' · zoek: '+esc(zk):''}${fi?'<br>'+esc(fi):''}</div>
 ${tab.outerHTML}</body></html>`);
   w.document.close();
