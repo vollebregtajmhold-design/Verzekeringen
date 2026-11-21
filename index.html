@@ -246,7 +246,7 @@ table.dt th.srton{color:var(--blue)}
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.37</span>
+  <span class="versie" title="Versie">v1.39</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="histBtn" hidden title="Wie heeft wat gewijzigd">🕘 Geschiedenis</button>
@@ -386,6 +386,7 @@ try{ PRIVE_OPEN = sessionStorage.getItem('priveOpen')==='1'; }catch(e){}
 // ---------- hulpjes ----------
 const eur = n => n==null ? '' : '€ ' + n.toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2});
 const eur0 = n => '€ ' + Math.round(n||0).toLocaleString('nl-NL');
+const pe = n => n==null ? '' : Number(n).toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2});   // prijs per eenheid, zonder €
 const nf = n => n==null ? '' : n.toLocaleString('nl-NL',{maximumFractionDigits:2});
 const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const tag = v => v==='ja' ? '<span class="tag ja">Ja</span>' : v==='nee' ? '<span class="tag nee">Nee</span>' : '<span class="muted">–</span>';
@@ -917,6 +918,13 @@ function dtAgg(items, m){
   if(m.a==='min') return Math.min(...v);
   return Math.max(...v);
 }
+// aantal met eenheid: per eenheid apart (bijv. "600 m² + 2 stuks")
+const eenhVan = x => ((x.eenh||'').trim()||'stuks').toLowerCase().replace(/^stuk$/,'stuks').replace(/^m2$/,'m²');
+function dtEenh(items, m){
+  const G={}; items.forEach(x=>{ if(x.aantal==null||isNaN(x.aantal)) return; (G[eenhVan(x)]=G[eenhVan(x)]||[]).push(x); });
+  const e=Object.keys(G); if(!e.length) return '';
+  return e.sort().map(u=>nf(dtAgg(G[u],m))+' '+esc(u)).join(' + ');
+}
 const dtFmt = (n,m) => n==null ? '' : m.a==='tel' ? nf(n) : DT_MAAT[m.m].f(n);
 const dtMLabel = m => DT_MAAT[m.m].n + (m.a==='som' ? '' : ' ('+DT_AGG[m.a]+')');
 let DTCELL = [];
@@ -931,7 +939,7 @@ function drawDT(){
   const r = D.bez.filter(x=>dtZoekOk(x) && dtFiltOk(x));
   const M = DT.val.length ? DT.val : [{m:'waarde',a:'som'}];
   DTCELL = [];
-  const cel = (items, m, filt, titel, cls='') => { const n=dtAgg(items,m); if(n==null||(!items.length)) return `<td class="nul ${cls}">–</td>`; DTCELL.push({filt, titel}); return `<td class="r klik ${cls}" data-dtc="${DTCELL.length-1}">${dtFmt(n,m)}</td>`; };
+  const cel = (items, m, filt, titel, cls='') => { const n=dtAgg(items,m); if(n==null||(!items.length)) return `<td class="nul ${cls}">–</td>`; DTCELL.push({filt, titel}); return `<td class="r klik ${cls}" data-dtc="${DTCELL.length-1}">${m.m==='aantal'&&m.a!=='tel' ? dtEenh(items,m) : dtFmt(n,m)}</td>`; };
   const ck = x => DT.kol.map(k=>DT_VELDEN[k].g(x));
   const keys = []; const seen=new Set();
   r.forEach(x=>{ const k=ck(x), s=JSON.stringify(k); if(!seen.has(s)){ seen.add(s); keys.push(k); } });
