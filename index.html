@@ -182,6 +182,25 @@ table.hist .nw{color:#1d6b3a}
 table.hist button{font:inherit;font-size:12px;cursor:pointer;border:1px solid #999;border-radius:6px;background:#fff;padding:2px 8px;white-space:nowrap}
 #dlgHist .tools{display:flex;gap:8px;flex-wrap:wrap}
 #dlgHist .tools select,#dlgHist .tools input{width:auto;flex:1;min-width:140px}
+.dtcfg{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.dtzone{background:#fff;border:1px solid #ccc;border-radius:8px;padding:10px}
+.dtk{font-weight:700;font-size:13px;color:#7a3e10;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;min-height:30px}
+.chip{display:inline-flex;align-items:center;gap:2px;background:var(--green);color:#fff;border-radius:99px;padding:3px 4px 3px 12px;font-size:13px;font-weight:700}
+.chip button{border:0;background:transparent;color:#fff;cursor:pointer;font-size:13px;padding:0 5px;border-radius:99px}
+.chip button:hover{background:rgba(255,255,255,.25)}
+.chips .leeg{color:#999;font-size:13px;align-self:center}
+.dtzone select{font-size:13px;padding:4px 8px;max-width:100%}
+.dtadd{display:flex;gap:6px;flex-wrap:wrap}
+table.dt td.dtl{white-space:nowrap;cursor:default}
+table.dt td.dtl.tog{cursor:pointer}
+table.dt td.dtl.tog:hover{background:var(--hl)}
+table.dt td.dtl .pijl{display:inline-block;width:16px;color:var(--green)}
+table.dt td.dtl .aantal{font-weight:400;color:#777;margin-left:4px}
+table.dt tr.d0 td{font-weight:700}
+table.dt tr.d1 td{background:#faf8f3}
+table.dt tr.d2 td,table.dt tr.d3 td{background:#fdfcf9;font-size:13px}
+table.dt th.c{text-align:center}
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -192,7 +211,7 @@ table.hist button{font:inherit;font-size:12px;cursor:pointer;border:1px solid #9
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.32</span>
+  <span class="versie" title="Versie">v1.33</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="histBtn" hidden title="Wie heeft wat gewijzigd">🕘 Geschiedenis</button>
@@ -219,6 +238,7 @@ table.hist button{font:inherit;font-size:12px;cursor:pointer;border:1px solid #9
 <div id="app" hidden>
 <nav><div class="in">
   <button data-t="bez" class="on">Kassen</button>
+  <button data-t="dt">Draaitabel</button>
   <button data-t="bedrijf">Zakelijk</button>
   <button data-t="prive">Privé</button>
   <button data-t="tijd">Aandachtspunten</button>
@@ -269,6 +289,20 @@ table.hist button{font:inherit;font-size:12px;cursor:pointer;border:1px solid #9
       <button class="btn add" id="seedC" title="Maak voor elke maatschappij uit je polissen een contactkaart">+ Maatschappijen uit polissen</button>
     </div>
     <div class="cgrid" id="cgrid"></div>
+  </section>
+
+  <section id="dt">
+    <div class="card">
+      <h2>Draaitabel – kassen <span style="float:right"><button type="button" class="btn klein" id="dtStd">↺ Standaard</button></span></h2>
+      <div class="dtcfg">
+        <div class="dtzone"><div class="dtk">Rijen</div><div id="dtRij" class="chips"></div><select id="dtRijAdd"><option value="">+ veld toevoegen</option></select></div>
+        <div class="dtzone"><div class="dtk">Kolommen</div><div id="dtKol" class="chips"></div><select id="dtKolAdd"><option value="">+ veld toevoegen</option></select></div>
+        <div class="dtzone"><div class="dtk">Waarden</div><div id="dtVal" class="chips"></div>
+          <div class="dtadd"><select id="dtValVeld"></select><select id="dtValAgg"></select><button type="button" class="btn klein" id="dtValAdd">+ toevoegen</button></div></div>
+      </div>
+    </div>
+    <div class="tools"><input type="search" id="dtZoek" placeholder="Filter: zoek object, soort, opmerking…"><button type="button" class="btn klein" id="dtOpen">▼ Alles open</button><button type="button" class="btn klein" id="dtDicht">▶ Alles dicht</button></div>
+    <div class="card tw"><table id="dtTab" class="piv dt"></table></div>
   </section>
 
   <section id="tijd">
@@ -379,6 +413,7 @@ function render(){
   fillSelect('lZ', [...new Set(D.bez.map(x=>x.loc).filter(Boolean))], locName);
   fillSelect('sZ', [...new Set(D.bez.map(x=>x.sub).filter(Boolean))].sort());
   drawZ();
+  drawDT();
 
   drawC();
   $('extra').innerHTML = D.extra.map(e=>`<li>${esc(e.tekst)}${lk(e.link,'Openen')}${fk('extra',e)} ${eb('extra',e.id)}</li>`).join('');
@@ -813,6 +848,134 @@ $('histInhoud').addEventListener('click', async e=>{
   }, 'Teruggezet');
   await toonGeschiedenis();
 });
+
+// ---------- draaitabel ----------
+const DT_VELDEN = {
+  loc:{n:'Locatie', g:x=>locName(x.loc||'?'), sort:(a,b)=>a.localeCompare(b,'nl',{numeric:true})},
+  afd:{n:'Afdeling', g:x=>afdNaam(x.afd), sort:afdSort},
+  sub:{n:'Soort', g:x=>x.sub||'Overig'},
+  obj:{n:'Object', g:x=>objNaam(objKey(x))},
+  eenh:{n:'Eenheid', g:x=>((x.eenh||'').trim()||'stuks').toLowerCase().replace(/^stuk$/,'stuks')},
+  dekking:{n:'Dekking', g:x=>x.dekking||'A'},
+};
+const DT_MAAT = {
+  waarde:{n:'Waarde', v:x=>x.waarde, f:eur0},
+  aantal:{n:'Aantal', v:x=>x.aantal, f:nf},
+  prijs:{n:'Prijs', v:x=>x.prijs, f:eur},
+  promille:{n:'Premie ‰', v:x=>x.promille, f:nf},
+  premie:{n:'Premie €', v:x=>(x.promille!=null&&x.waarde!=null)?x.waarde*x.promille/1000:null, f:eur},
+};
+const DT_AGG = { som:'som', gem:'gemiddelde', min:'minimum', max:'maximum', tel:'aantal regels' };
+const DT_STD = { rij:['sub','obj'], kol:['loc'], val:[{m:'waarde',a:'som'}] };
+let DT = JSON.parse(JSON.stringify(DT_STD));
+try{ const z=JSON.parse(localStorage.getItem('dtcfg')||'null'); if(z&&z.rij&&z.kol&&z.val) DT=z; }catch(e){}
+const DTOPEN = new Set();
+const dtBewaar = () => { try{ localStorage.setItem('dtcfg', JSON.stringify(DT)); }catch(e){} };
+const dtSort = k => DT_VELDEN[k].sort || ((a,b)=>a.localeCompare(b,'nl',{numeric:true}));
+function dtAgg(items, m){
+  if(m.a==='tel') return items.length;
+  const v = items.map(DT_MAAT[m.m].v).filter(x=>x!=null && !isNaN(x));
+  if(!v.length) return null;
+  if(m.a==='som') return v.reduce((a,b)=>a+b,0);
+  if(m.a==='gem') return v.reduce((a,b)=>a+b,0)/v.length;
+  if(m.a==='min') return Math.min(...v);
+  return Math.max(...v);
+}
+const dtFmt = (n,m) => n==null ? '' : m.a==='tel' ? nf(n) : DT_MAAT[m.m].f(n);
+const dtMLabel = m => DT_MAAT[m.m].n + (m.a==='som' ? '' : ' ('+DT_AGG[m.a]+')');
+let DTCELL = [];
+function drawDT(){
+  if(!D) return;
+  // configuratie-knoppen
+  const chip = (k,lab,zone,i,n) => `<span class="chip">${esc(lab)}${i>0?`<button type="button" data-dtmv="${zone}" data-i="${i}" data-d="-1" title="Naar voren">‹</button>`:''}${i<n-1?`<button type="button" data-dtmv="${zone}" data-i="${i}" data-d="1" title="Naar achteren">›</button>`:''}<button type="button" data-dtrm="${zone}" data-i="${i}" title="Weghalen">✕</button></span>`;
+  $('dtRij').innerHTML = DT.rij.map((k,i)=>chip(k,DT_VELDEN[k].n,'rij',i,DT.rij.length)).join('') || '<span class="leeg">geen</span>';
+  $('dtKol').innerHTML = DT.kol.map((k,i)=>chip(k,DT_VELDEN[k].n,'kol',i,DT.kol.length)).join('') || '<span class="leeg">geen</span>';
+  $('dtVal').innerHTML = DT.val.map((m,i)=>chip('',dtMLabel(m),'val',i,DT.val.length)).join('') || '<span class="leeg">geen</span>';
+  const vrij = Object.keys(DT_VELDEN).filter(k=>!DT.rij.includes(k)&&!DT.kol.includes(k));
+  const opt = (id,lab) => { $(id).innerHTML = `<option value="">${lab}</option>` + vrij.map(k=>`<option value="${k}">${DT_VELDEN[k].n}</option>`).join(''); };
+  opt('dtRijAdd','+ veld toevoegen'); opt('dtKolAdd','+ veld toevoegen');
+  if(!$('dtValVeld').options.length){
+    $('dtValVeld').innerHTML = Object.entries(DT_MAAT).map(([k,v])=>`<option value="${k}">${v.n}</option>`).join('');
+    $('dtValAgg').innerHTML = Object.entries(DT_AGG).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
+  }
+  // gegevens
+  const t = $('dtZoek').value.toLowerCase();
+  const r = D.bez.filter(x=>!t || [x.obj,x.sub,x.opm,locName(x.loc||''),afdNaam(x.afd)].join(' ').toLowerCase().includes(t));
+  const M = DT.val.length ? DT.val : [{m:'waarde',a:'som'}];
+  DTCELL = [];
+  const cel = (items, m, filt, titel, cls='') => { const n=dtAgg(items,m); if(n==null||(!items.length)) return `<td class="nul ${cls}">–</td>`; DTCELL.push({filt, titel}); return `<td class="r klik ${cls}" data-dtc="${DTCELL.length-1}">${dtFmt(n,m)}</td>`; };
+  // kolomsleutels
+  const ck = x => DT.kol.map(k=>DT_VELDEN[k].g(x));
+  const keys = []; const seen=new Set();
+  r.forEach(x=>{ const k=ck(x), s=JSON.stringify(k); if(!seen.has(s)){ seen.add(s); keys.push(k); } });
+  keys.sort((a,b)=>{ for(let i=0;i<a.length;i++){ const c=dtSort(DT.kol[i])(a[i],b[i]); if(c) return c; } return 0; });
+  const kolNaam = k => k.join(' · ');
+  // kop
+  const nk = DT.kol.length, nm = M.length, hrows = nk + (nm>1?1:0) || 1;
+  let h = '<thead>';
+  for(let lvl=0; lvl<hrows; lvl++){
+    h += '<tr>';
+    if(lvl===0) h += `<th rowspan="${hrows}">${esc(DT.rij.map(k=>DT_VELDEN[k].n).join(' / ')||'')}</th>`;
+    if(lvl<nk){
+      let i=0; while(i<keys.length){ let j=i; const pre=JSON.stringify(keys[i].slice(0,lvl+1)); while(j<keys.length && JSON.stringify(keys[j].slice(0,lvl+1))===pre) j++;
+        h += `<th class="c" colspan="${(j-i)*nm}">${esc(keys[i][lvl])}</th>`; i=j; }
+      if(lvl===0) h += `<th class="c ltot" colspan="${nm}" rowspan="${nk}">Totaal</th>`;
+    } else if(nm>1){
+      for(let i=0;i<keys.length;i++) M.forEach(m=>h+=`<th class="r asub">${esc(dtMLabel(m))}</th>`);
+      M.forEach(m=>h+=`<th class="r asub ltot">${esc(dtMLabel(m))}</th>`);
+    } else if(nk===0){
+      M.forEach(m=>h+=`<th class="r">${esc(dtMLabel(m))}</th>`);
+    }
+    h += '</tr>';
+  }
+  h += '</thead><tbody>';
+  // rijen (genest)
+  const rijCellen = (items, filtR, titel) => keys.map(k=>{ const ks=JSON.stringify(k); const it=items.filter(x=>JSON.stringify(ck(x))===ks);
+      return M.map(m=>cel(it,m,x=>filtR(x)&&JSON.stringify(ck(x))===ks, titel+(nk?' – '+kolNaam(k):''))).join(''); }).join('')
+    + M.map(m=>cel(items,m,filtR,titel,'ltot')).join('');
+  function groep(items, d, pad, filtR){
+    const k = DT.rij[d]; const G = {};
+    items.forEach(x=>{ const v=DT_VELDEN[k].g(x); (G[v]=G[v]||[]).push(x); });
+    Object.keys(G).sort(dtSort(k)).forEach(v=>{
+      const p=[...pad,v], key=p.join('␟'), laatste = d===DT.rij.length-1, open = !laatste && (DTOPEN.has(key) || !!t);
+      const f = x=>filtR(x) && DT_VELDEN[k].g(x)===v;
+      h += `<tr class="d${Math.min(d,3)}"><td class="dtl${laatste?'':' tog'}" data-dtk="${esc(key)}" style="padding-left:${10+d*20}px">${laatste?'':`<span class="pijl">${open?'▼':'▶'}</span>`}${esc(v)}<span class="aantal">(${G[v].length})</span></td>${rijCellen(G[v], f, p.join(' – '))}</tr>`;
+      if(open) groep(G[v], d+1, p, f);
+    });
+  }
+  if(DT.rij.length) groep(r, 0, [], ()=>true);
+  h += `</tbody><tfoot><tr class="tot"><td>Totaal</td>${rijCellen(r, ()=>true, 'Alles')}</tr></tfoot>`;
+  $('dtTab').innerHTML = h;
+  $('dtTab').dataset.zoek = t;
+}
+$('dtTab').addEventListener('click', e=>{
+  const g = e.target.closest('td.dtl.tog'); if(g){ const k=g.dataset.dtk; DTOPEN.has(k)?DTOPEN.delete(k):DTOPEN.add(k); drawDT(); return; }
+  const c = e.target.closest('td[data-dtc]'); if(!c) return;
+  const { filt, titel } = DTCELL[+c.dataset.dtc]; const t=$('dtZoek').value.toLowerCase();
+  const f = x => filt(x) && (!t || [x.obj,x.sub,x.opm,locName(x.loc||''),afdNaam(x.afd)].join(' ').toLowerCase().includes(t));
+  const items = D.bez.filter(f);
+  const een = g => { const v=[...new Set(items.map(g))]; return v.length===1?v[0]:''; };
+  INFO = { items, open:new Set(), mode:'afd', filt:f, preset:{ sub:een(x=>x.sub), loc:een(x=>x.loc), afd:een(x=>x.afd), obj:'' } };
+  alleOpen(); $('infoTitel').textContent = titel; renderInfo(); $('dlgInfo').showModal();
+});
+$('dtTab').addEventListener('contextmenu', e=>{ const c=e.target.closest('td[data-dtc]'); if(!c) return; e.preventDefault(); c.dispatchEvent(new MouseEvent('click',{bubbles:true})); });
+document.querySelector('#dt .dtcfg').addEventListener('click', e=>{
+  const rm=e.target.closest('[data-dtrm]'), mv=e.target.closest('[data-dtmv]');
+  if(rm){ DT[rm.dataset.dtrm].splice(+rm.dataset.i,1); }
+  else if(mv){ const a=DT[mv.dataset.dtmv], i=+mv.dataset.i, j=i+(+mv.dataset.d); [a[i],a[j]]=[a[j],a[i]]; }
+  else return;
+  DTOPEN.clear(); dtBewaar(); drawDT();
+});
+$('dtRijAdd').onchange = e=>{ if(e.target.value){ DT.rij.push(e.target.value); DTOPEN.clear(); dtBewaar(); drawDT(); } };
+$('dtKolAdd').onchange = e=>{ if(e.target.value){ DT.kol.push(e.target.value); dtBewaar(); drawDT(); } };
+$('dtValAdd').onclick = ()=>{ DT.val.push({m:$('dtValVeld').value, a:$('dtValAgg').value}); dtBewaar(); drawDT(); };
+$('dtStd').onclick = ()=>{ DT=JSON.parse(JSON.stringify(DT_STD)); DTOPEN.clear(); dtBewaar(); drawDT(); };
+$('dtZoek').oninput = drawDT;
+$('dtOpen').onclick = ()=>{ // alle groepen (behalve het laatste niveau) open
+  const t=$('dtZoek').value.toLowerCase();
+  D.bez.forEach(x=>{ const p=[]; DT.rij.slice(0,-1).forEach(k=>{ p.push(DT_VELDEN[k].g(x)); DTOPEN.add(p.join('␟')); }); });
+  drawDT(); };
+$('dtDicht').onclick = ()=>{ DTOPEN.clear(); drawDT(); };
 
 // ---------- contacten ----------
 const norm = v => String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');
