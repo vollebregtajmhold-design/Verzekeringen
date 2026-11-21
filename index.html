@@ -240,6 +240,12 @@ table.dt th.srton{color:var(--blue)}
 .fklik:hover{color:var(--blue);border-bottom-color:var(--blue)}
 .fklik.fon{background:var(--hl);color:var(--blue);font-weight:700;border-radius:4px;padding:1px 4px;border-bottom:0}
 a.mij{text-decoration:none}
+.finfo{align-self:center;font-size:14px;color:#333;white-space:nowrap}
+.finfo b{color:var(--blue)}
+.finfo a{color:var(--red);cursor:pointer;margin-left:8px;font-weight:700}
+.fklik2{cursor:pointer;display:inline-block;border-radius:6px;padding:1px 3px}
+.fklik2:hover{background:var(--hl)}
+.fklik2.fon{background:var(--hl);outline:2px solid var(--blue)}
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -250,7 +256,7 @@ a.mij{text-decoration:none}
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.42</span>
+  <span class="versie" title="Versie">v1.44</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="histBtn" hidden title="Wie heeft wat gewijzigd">🕘 Geschiedenis</button>
@@ -294,16 +300,17 @@ a.mij{text-decoration:none}
   <section id="bedrijf">
     <div class="tools">
       <input type="search" id="qB" placeholder="Zoek op naam, maatschappij of polisnummer…">
-      <select id="fB"><option value="">Alle categorieën</option></select>
-      <select id="mB"><option value="">Alle maatschappijen</option></select>
-      <select id="aB"><option value="">Actie: alles</option><option value="ja">Alleen actie nodig</option></select>
+      <select id="fB" hidden><option value="">Alle categorieën</option></select>
+      <select id="mB" hidden><option value="">Alle maatschappijen</option></select>
+      <select id="aB" hidden><option value="">Actie: alles</option><option value="ja">ja</option><option value="nee">nee</option><option value="-">-</option></select>
+      <span id="fInfoB" class="finfo"></span>
       <button class="btn add" data-add="bedrijf">+ Toevoegen</button>
     </div>
     <div class="card tw"><table id="tB"></table></div>
   </section>
 
   <section id="prive">
-    <div class="tools"><input type="search" id="qP" placeholder="Zoek…"><button type="button" class="btn klein" id="pvSlot" title="Privé weer op slot zetten">🔒 Vergrendelen</button><button type="button" class="btn klein" id="pvWijzig" hidden>🔑 Wachtwoord wijzigen</button><button class="btn add" data-add="prive">+ Toevoegen</button></div>
+    <div class="tools"><input type="search" id="qP" placeholder="Zoek…"><select id="mP" hidden><option value=""></option></select><select id="aP" hidden><option value=""></option><option value="ja">ja</option><option value="nee">nee</option><option value="-">-</option></select><span id="fInfoP" class="finfo"></span><button type="button" class="btn klein" id="pvSlot" title="Privé weer op slot zetten">🔒 Vergrendelen</button><button type="button" class="btn klein" id="pvWijzig" hidden>🔑 Wachtwoord wijzigen</button><button class="btn add" data-add="prive">+ Toevoegen</button></div>
     <div class="card tw"><table id="tP"></table></div>
     <div class="card"><h2>Notities <button class="btn add" data-add="priveNotes">+ Toevoegen</button></h2><ul id="notes"></ul></div>
   </section>
@@ -447,8 +454,9 @@ function render(){
 
   fillSelect('fB', [...new Set(D.bedrijf.map(x=>x.cat).filter(Boolean))].sort());
   fillSelect('mB', [...new Set(D.bedrijf.map(x=>x.mij).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'nl')));
-  drawPolis('tB','bedrijf','qB', x=>(!$('fB').value||x.cat===$('fB').value)&&(!$('mB').value||x.mij===$('mB').value)&&(!$('aB').value||x.actie==='ja'));
-  drawPolis('tP','prive','qP');
+  drawPolis('tB','bedrijf','qB', x=>(!$('fB').value||x.cat===$('fB').value)&&(!$('mB').value||x.mij===$('mB').value)&&(!$('aB').value||(x.actie||'-')===$('aB').value));
+  fillSelect('mP', [...new Set(D.prive.map(x=>x.mij).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'nl')));
+  drawPolis('tP','prive','qP', x=>(!$('mP').value||x.mij===$('mP').value)&&(!$('aP').value||(x.actie||'-')===$('aP').value));
   $('notes').innerHTML = D.priveNotes.map(n=>`<li>${esc(n.tekst)}${lk(n.link)}${fk('priveNotes',n)} ${eb('priveNotes',n.id)}</li>`).join('');
 
   fillSelect('lZ', [...new Set(D.bez.map(x=>x.loc).filter(Boolean))], locName);
@@ -461,18 +469,21 @@ function render(){
   $('tl').innerHTML = [...D.tijd].sort((a,b)=>String(a.datum).localeCompare(String(b.datum))).map(d=>`<div class="d">${d.datum?new Date(d.datum).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'}):'(geen datum)'}</div> ${eb('tijd',d.id)}<div class="note">Aanwezig: ${esc(d.wie)}</div><ul>${(d.punten||[]).map(p=>`<li>${esc(p.tekst)}${p.extra?` <span class="tag act">${esc(p.extra)}</span>`:''}</li>`).join('')}</ul>`).join('');
 }
 
+const FSEL = { bedrijf:{c:'fB',m:'mB',a:'aB',i:'fInfoB'}, prive:{c:null,m:'mP',a:'aP',i:'fInfoP'} };
 function drawPolis(id, sec, q, extra){
-  const st = sort[id];
+  const st = sort[id], FS = FSEL[sec];
   const cols=[['nr','Nr'],['wat','Wat verzekerd'],['cat','Categorie'],['mij','Maatschappij'],['polis','Polisnummer'],['verz','Verzekerd'],['actie','Actie'],['premie','Premie','r'],['opm','Opmerking']];
   const t = $(q).value.toLowerCase();
   const r = D[sec].filter(x=>(!t || [x.wat,x.mij,x.polis,x.cat,x.opm].join(' ').toLowerCase().includes(t)) && (!extra || extra(x)));
   r.sort((a,b)=>{const A=a[st.key]??'',B=b[st.key]??''; return (typeof A==='number'&&typeof B==='number'?A-B:String(A).localeCompare(String(B),'nl',{numeric:true}))*st.dir;});
   $(id).innerHTML = '<thead><tr>'+cols.map(c=>`<th class="${c[2]||''}" data-k="${c[0]}">${c[1]}${st.key===c[0]?(st.dir>0?' ▲':' ▼'):''}</th>`).join('')+(EDIT?'<th></th>':'')+'</tr></thead><tbody>'+
-    r.map(x=>`<tr><td class="muted">${esc(x.nr)}</td><td><div class="wl"><span>${esc(x.wat)}</span>${lk(x.link)}${fk(sec,x)}</div></td><td>${sec==='bedrijf'&&x.cat?`<span class="fklik${$('fB').value===x.cat?' fon':''}" data-fsel="fB" data-fval="${esc(x.cat)}" title="Klik: alleen deze categorie">${esc(x.cat)}</span>`:esc(x.cat)}</td><td>${sec==='bedrijf'&&x.mij?`<span class="fklik${$('mB').value===x.mij?' fon':''}" data-fsel="mB" data-fval="${esc(x.mij)}" title="Klik: alleen deze maatschappij">${esc(x.mij)}</span>${heeftContact(x.mij)?` <a class="mij" data-mij="${esc(x.mij)}" title="Contactgegevens">📇</a>`:''}`:mijLink(x.mij)}</td><td>${esc(x.polis)}</td><td>${tag(x.verz)}</td><td>${act(x.actie)}</td><td class="r">${eur(x.premie)}</td><td class="muted">${esc(x.opm)}</td>${EDIT?`<td>${eb(sec,x.id)}</td>`:''}</tr>`).join('')+
+    r.map(x=>`<tr><td class="muted">${esc(x.nr)}</td><td><div class="wl"><span>${esc(x.wat)}</span>${lk(x.link)}${fk(sec,x)}</div></td><td>${sec==='bedrijf'&&x.cat?`<span class="fklik${$('fB').value===x.cat?' fon':''}" data-fsel="fB" data-fval="${esc(x.cat)}" title="Klik: alleen deze categorie">${esc(x.cat)}</span>`:esc(x.cat)}</td><td>${x.mij?`<span class="fklik${$(FS.m).value===x.mij?' fon':''}" data-fsel="${FS.m}" data-fval="${esc(x.mij)}" title="Klik: alleen deze maatschappij">${esc(x.mij)}</span>${heeftContact(x.mij)?` <a class="mij" data-mij="${esc(x.mij)}" title="Contactgegevens">📇</a>`:''}`:mijLink(x.mij)}</td><td>${esc(x.polis)}</td><td>${tag(x.verz)}</td><td><span class="fklik2${$(FS.a).value===(x.actie||'-')?' fon':''}" data-fsel="${FS.a}" data-fval="${x.actie||'-'}" title="Klik: alleen deze">${act(x.actie)}</span></td><td class="r">${eur(x.premie)}</td><td class="muted">${esc(x.opm)}</td>${EDIT?`<td>${eb(sec,x.id)}</td>`:''}</tr>`).join('')+
     `</tbody><tfoot><tr><td colspan="7">Totaal (${r.length} regels)</td><td class="r">${eur(sum(r,x=>x.premie))}</td><td${EDIT?' colspan="2"':''}></td></tr></tfoot>`;
   $(id).querySelectorAll('th[data-k]').forEach(th=>th.onclick=()=>{ if(st.key===th.dataset.k) st.dir=-st.dir; else {st.key=th.dataset.k;st.dir=1;} drawPolis(id,sec,q,extra); });
   $(q).oninput = () => drawPolis(id,sec,q,extra);
-  if(sec==='bedrijf'){ $('fB').oninput = $('mB').oninput = $('aB').oninput = () => drawPolis(id,sec,q,extra); }
+  [FS.c,FS.m,FS.a].filter(Boolean).forEach(i=>$(i).oninput = () => drawPolis(id,sec,q,extra));
+  const f = [FS.c?$(FS.c).value:'', $(FS.m).value, $(FS.a).value ? 'Actie: '+({ja:'ja',nee:'nee','-':'leeg'}[$(FS.a).value]) : ''].filter(Boolean);
+  $(FS.i).innerHTML = f.length ? `Filter: <b>${f.map(esc).join(' · ')}</b> <a data-falle>✕ Alles tonen</a>` : '';
 }
 
 const ZOPEN = new Set();
@@ -1152,11 +1163,12 @@ $('dtOpen').onclick = ()=>{ // alle groepen (behalve het laatste niveau) open
 $('dtDicht').onclick = ()=>{ DTOPEN.clear(); drawDT(); };
 
 // klik op categorie/maatschappij in Zakelijk: filteren, nog een keer: alles
-$('tB').addEventListener('click', e=>{
+[['fInfoB',['fB','mB','aB']],['fInfoP',['mP','aP']]].forEach(([inf,ids])=>$(inf).addEventListener('click', e=>{ if(!e.target.closest('[data-falle]')) return; ids.forEach(i=>$(i).value=''); $(ids[ids.length-1]).dispatchEvent(new Event('input')); }));
+['tB','tP'].forEach(t=>$(t).addEventListener('click', e=>{
   const c = e.target.closest('[data-fsel]'); if(!c) return;
   const sel = $(c.dataset.fsel); sel.value = sel.value===c.dataset.fval ? '' : c.dataset.fval;
   sel.dispatchEvent(new Event('input'));
-});
+}));
 
 // ---------- contacten ----------
 const norm = v => String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');
