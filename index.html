@@ -300,6 +300,19 @@ button.sbtn.leeg{background:#fff;color:#7a3e10;border:1px dashed #7a3e10}
 .dtpop .jnieuw button:hover{background:#eef4ff}
 .dtpop .jnieuw .gevaar{color:#b00020}
 .dt td.vsplus{color:#0a7a2f;font-weight:700}.dt td.vsmin{color:#b00020;font-weight:700}.dt td.vs0{color:#888}.dt .vsp{font-weight:normal;font-size:.85em}
+body:not(.beheer) #sheetBtn{display:none}
+#dlgSheet{width:98vw;max-width:98vw;height:94vh;max-height:94vh;padding:12px 14px;display:none;flex-direction:column}
+#dlgSheet[open]{display:flex}
+#dlgSheet .shkop{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#dlgSheet .shkop h2{margin:0;flex:1}
+#dlgSheet .shknop{display:flex;gap:8px}
+#dlgSheet .shuitleg{font-size:13px;color:#444;margin:6px 0 8px}
+#shWrap{flex:1;overflow:auto;background:#fff;border:1px solid #bbb}
+#shWrap .jexcel{font-size:13px}
+#shWrap .jexcel > thead > tr > td{background:#e8eefc;font-weight:700;position:sticky;top:0;z-index:3}
+#shWrap .jexcel tbody td.readonly{color:#333;background:#f4f4f4}
+#shWrap input,#shWrap textarea{width:auto;padding:0;border:0;border-radius:0}
+#shInfo{font-size:13px;margin-top:6px}
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -310,7 +323,7 @@ button.sbtn.leeg{background:#fff;color:#7a3e10;border:1px dashed #7a3e10}
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.48</span>
+  <span class="versie" title="Versie">v1.50</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="histBtn" hidden title="Wie heeft wat gewijzigd">🕘 Geschiedenis</button>
@@ -392,7 +405,7 @@ button.sbtn.leeg{background:#fff;color:#7a3e10;border:1px dashed #7a3e10}
 
   <section id="dt" class="on">
     <div class="card">
-      <h2>Kassen <span style="float:right"><button type="button" class="btn klein" id="docBtn" title="Maak een overzicht zoals de polis, om af te drukken of als PDF te bewaren">📄 Polisdocument</button> <button type="button" class="btn klein" id="dtPrint">🖨 Afdrukken / PDF</button> <button type="button" class="btn klein" id="dtStd">↺ Standaard</button></span></h2>
+      <h2>Kassen <span style="float:right"><button type="button" class="btn klein" id="sheetBtn" title="Invullen zoals in Excel: kopiëren, plakken en slepen">📋 Spreadsheet</button> <button type="button" class="btn klein" id="docBtn" title="Maak een overzicht zoals de polis, om af te drukken of als PDF te bewaren">📄 Polisdocument</button> <button type="button" class="btn klein" id="dtPrint">🖨 Afdrukken / PDF</button> <button type="button" class="btn klein" id="dtStd">↺ Standaard</button></span></h2>
       <div class="dtbar">
         <div class="dtpick"><div class="dtlab">Jaar</div><button type="button" class="dtbtn jaarbtn" data-zone="jaar"><span class="dtsel"></span> ▾</button><div class="dtpop" data-zone="jaar" hidden></div></div>
         <div class="dtpick"><div class="dtlab">Groeperen (rijen)</div><button type="button" class="dtbtn" data-zone="rij"><span class="dtsel"></span> ▾</button><div class="dtpop" data-zone="rij" hidden></div></div>
@@ -416,6 +429,9 @@ button.sbtn.leeg{background:#fff;color:#7a3e10;border:1px dashed #7a3e10}
 </div>
 <dialog id="dlg"><form id="frm" method="dialog"><h2 id="dlgTitel"></h2><div id="velden"></div>
 <div class="knoppen"><button type="button" class="btn" onclick="this.closest('dialog').close('annuleer')">Annuleren</button><button class="btn blue" id="opslaan" value="ok">Opslaan</button></div></form></dialog>
+<dialog id="dlgSheet"><div class="shkop"><h2 id="shTitel">Spreadsheet</h2><div class="shknop"><button type="button" class="btn" id="shRij">➕ Rij</button><button type="button" class="btn" id="shAnn">Annuleren</button><button type="button" class="btn blue" id="shOk">💾 Opslaan</button></div></div>
+<div class="shuitleg">Klik in een vak en typ. <b>Ctrl+C / Ctrl+V</b> werkt, ook vanuit Excel. Sleep het <b>blokje rechtsonder</b> om te kopiëren naar beneden. <b>Ctrl+Z</b> = terug. Rechtsklik = rij toevoegen of verwijderen. Waarde = aantal × prijs (vanzelf).</div>
+<div id="shWrap"><div id="sheet"></div></div><div id="shInfo" class="muted"></div></dialog>
 <dialog id="dlgInfo" class="breed"><form method="dialog"><h2 id="infoTitel"></h2><div id="infoInhoud" class="tw"></div><div class="knoppen"><span id="infoKnop" class="schakel" style="float:none"><button type="button" data-m="afd">Per afdeling</button><button type="button" data-m="obj">Per object</button></span><button type="button" class="btn klein" id="infoOpen">▼ Alles open</button><button type="button" class="btn klein" id="infoDicht">▶ Alles dicht</button><button type="button" class="btn add" id="infoAdd" hidden>+ Object toevoegen</button><span style="flex:1"></span><button class="btn blue">Sluiten</button></div></form></dialog>
 <dialog id="dlgFiles"><form method="dialog"><h2 id="filesTitel">Bestanden</h2><ul id="filesLijst" class="flijst"></ul>
 <div class="knoppen"><label class="btn add" id="filesUp">⬆ Bestand uploaden<input type="file" id="filesInput" multiple hidden></label><span style="flex:1"></span><button class="btn blue">Sluiten</button></div></form></dialog>
@@ -1162,6 +1178,7 @@ function dtPop(z){
     }
     if(BEHEER){
       h += '<div class="jnieuw"><button type="button" data-jnieuw>➕ Nieuw jaar (kopie van vorig jaar)…</button>';
+      if(J.includes('2026')) h += '<button type="button" data-pb250>📥 Polisblad 250 (nov 2026) invullen in 2026…</button>';
       if(J.length>1 && j!=='alle' && !nst) h += `<button type="button" class="gevaar" data-jdel>🗑 Jaar ${esc(j)} verwijderen…</button>`;
       h += '</div>';
     }
@@ -1219,6 +1236,7 @@ document.querySelectorAll('#dt .dtpop').forEach(pop=>{
       if(a){ DT.jaar=a.dataset.jaar; DT.kol=DT.kol.filter(k=>k!=='jaar'); DT.rij=DT.rij.filter(k=>k!=='jaar'); DTOPEN.clear(); dtBewaar(); pop.hidden=true; drawDT(); return; }
       if(e.target.closest('[data-jnaast]')){ if(!jaarNaast()){ DT.rij=DT.rij.filter(k=>k!=='jaar'); DT.kol=['jaar']; } DT.naam=''; DTOPEN.clear(); dtBewaar(); pop.hidden=true; drawDT(); return; }
       if(e.target.closest('[data-jnieuw]')){ pop.hidden=true; dtKnoppen(); nieuwJaar(); return; }
+      if(e.target.closest('[data-pb250]')){ pop.hidden=true; dtKnoppen(); polisblad250(); return; }
       if(e.target.closest('[data-jdel]')){ pop.hidden=true; dtKnoppen(); jaarWeg(); return; }
       return;
     }
@@ -1352,6 +1370,41 @@ async function nieuwJaar(){
   }, `Jaar ${nieuw} gemaakt (kopie van ${van})`);
   DT.jaar = nieuw; DT.kol=DT.kol.filter(k=>k!=='jaar'); DT.rij=DT.rij.filter(k=>k!=='jaar'); DTOPEN.clear(); dtBewaar(); drawDT();
 }
+// Polisblad AgriVer 0512.01.84.86.7203 (Legmeerdijk 250), 20-11-2026 – alleen wat duidelijk past
+const PB250 = {
+  kas: { // alleen afdelingen in de kas (Afd ...)
+    'glas':{prijs:40.82, promille:5.0685}, 'constructie':{prijs:65.95, promille:1.09}, 'cv buizen':{prijs:15.89, promille:0.545},
+    'eb/vloed systeem':{promille:1.09}, 'elektra':{prijs:13.72, promille:1.09}, 'ventilatoren':{prijs:3.87, promille:1.09},
+    'schermdoek':{prijs:21.72, promille:2.18}, 'betonpaden':{promille:0.55}, 'opruimingskosten':{promille:2} },
+  alle: {
+    'kantoorelektronica':{aantal:1, prijs:25000, promille:2.7468}, 'gasreduceerstation':{aantal:1, prijs:30659.34, promille:2.1582},
+    'hydrofor + silo binnen':{aantal:1, prijs:48032.97, promille:2.1582} },
+};
+function pb250Wijzig(x){
+  if(String(x.loc)!=='250' || jaarVan(x)!=='2026') return null;
+  const o = String(x.obj||'').toLowerCase().trim(), afd = String(x.afd||'');
+  let w = null;
+  if(/^afd/i.test(afd) && PB250.kas[o]) w = {...PB250.kas[o]};
+  else if(PB250.alle[o]) w = {...PB250.alle[o]};
+  else if(x.sub==='Gewassen') w = {aantal:8376, eenh:'m²', prijs:131.86, promille:2.47975, dekking:'AE'};
+  else if(x.sub==='Bedrijfsgebouwen' && /hal|ketel/i.test(afd)) w = {promille:1.4715};
+  if(!w) return null;
+  const y = {...x, ...w};
+  if(w.prijs!=null) y.waarde = Math.round((y.aantal||0)*y.prijs*100)/100;
+  const veranderd = Object.keys({...w, waarde:1}).some(k=>JSON.stringify(x[k]??null)!==JSON.stringify(y[k]??null));
+  return veranderd ? y : null;
+}
+async function polisblad250(){
+  if(!BEHEER) return;
+  const nw = D.bez.map(pb250Wijzig).filter(Boolean);
+  if(!nw.length){ alert('Alles van het polisblad 250 staat al in 2026. Er is niets te doen.'); return; }
+  const oud = sum(D.bez.filter(x=>String(x.loc)==='250'&&jaarVan(x)==='2026'),x=>x.waarde);
+  const ids = new Set(nw.map(x=>x.id));
+  const nieuwTot = sum(D.bez.filter(x=>String(x.loc)==='250'&&jaarVan(x)==='2026').map(x=>ids.has(x.id)?nw.find(y=>y.id===x.id):x),x=>x.waarde);
+  if(!confirm(`Polisblad 250 (20-11-2026) invullen in 2026.\n\n${nw.length} regels van locatie 250 worden aangepast (prijs en/of premie per 1000).\nUw eigen regels blijven staan. 2025 verandert niet.\n\nWaarde 250 in 2026: ${eur0(oud)} → ${eur0(nieuwTot)}\n\nDoorgaan?`)) return;
+  await opslaan('bez', items=>items.map(x=>pb250Wijzig(x)||x), 'Polisblad 250 ingevuld in 2026');
+  DT.jaar='2026'; if(!jaarNaast()){ DT.kol=['jaar']; } DTOPEN.clear(); dtBewaar(); drawDT();
+}
 async function jaarWeg(){
   const j = dtJaar(); if(!BEHEER || j==='alle' || jaren().length<2) return;
   const n = D.bez.filter(x=>jaarVan(x)===j).length;
@@ -1360,6 +1413,98 @@ async function jaarWeg(){
   await opslaan('bez', items=>items.filter(x=>jaarVan(x)!==j), `Jaar ${j} verwijderd`);
   DT.jaar=''; dtBewaar(); drawDT();
 }
+
+// ---------- spreadsheet (Kassen invullen zoals in Excel) ----------
+let SHEET = null, SHORIG = null, SHBUSY = false;
+const SHKOL = [ // [veld, titel, breedte, soort]
+  ['id','id',0,'hidden'], ['jaar','Jaar',60], ['loc','Locatie',70], ['afd','Afdeling',90], ['sub','Soort',120], ['obj','Object',190],
+  ['aantal','Aantal',80,'num'], ['eenh','Eenheid',70], ['prijs','Prijs',85,'num'], ['waarde','Waarde',105,'num'], ['promille','Premie ‰',80,'num'], ['dekking','Dekking',65], ['opm','Opmerking',220] ];
+const SHI = k => SHKOL.findIndex(c=>c[0]===k);
+const shTxt = v => v==null ? '' : typeof v==='number' ? String(Math.round(v*100000)/100000).replace('.',',') : String(v);
+const shNum = v => { v=String(v??'').trim().replace(/[€\s]/g,''); if(!v) return null; if(v.includes(',')) v=v.replace(/\./g,'').replace(',','.'); const n=Number(v); return isNaN(n)?null:n; };
+function laadScript(src){ return new Promise((ok,nee)=>{ const e=document.createElement('script'); e.src=src; e.onload=ok; e.onerror=()=>nee(new Error('Laden mislukt: '+src)); document.head.appendChild(e); }); }
+function laadCss(href){ const l=document.createElement('link'); l.rel='stylesheet'; l.href=href; document.head.appendChild(l); }
+let SHLIB = null;
+function laadSheetLib(){
+  if(window.jspreadsheet) return Promise.resolve();
+  if(!SHLIB){ const C='https://cdn.jsdelivr.net/npm/';
+    laadCss(C+'jsuites@5.13.4/dist/jsuites.css'); laadCss(C+'jspreadsheet-ce@4.13.4/dist/jspreadsheet.css');
+    SHLIB = laadScript(C+'jsuites@5.13.4/dist/jsuites.js').then(()=>laadScript(C+'jspreadsheet-ce@4.13.4/dist/index.js')); }
+  return SHLIB;
+}
+async function openSheet(){
+  if(!BEHEER) return;
+  if(!EDIT){ await $('editBtn').onclick(); if(!EDIT) return; }
+  try{ await laadSheetLib(); }catch(e){ alert('De spreadsheet kon niet laden. Controleer de internetverbinding.\n'+e.message); return; }
+  const rows = D.bez.filter(x=>dtZoekOk(x) && dtFiltOk(x)).slice().sort((a,b)=>
+    jaarVan(a).localeCompare(jaarVan(b),'nl',{numeric:true}) || String(a.loc||'').localeCompare(String(b.loc||''),'nl',{numeric:true}) ||
+    afdSort(afdNaam(a.afd),afdNaam(b.afd)) || String(a.sub||'').localeCompare(String(b.sub||''),'nl') || String(a.obj||'').localeCompare(String(b.obj||''),'nl'));
+  SHORIG = new Map(rows.map(x=>[x.id,x]));
+  const data = rows.map(x=>SHKOL.map(([k])=>shTxt(x[k])));
+  const j = dtJaar(), stdJaar = heeftJaren() ? (j!=='alle' && !jaarNaast() ? j : jaren()[0]) : '';
+  $('shTitel').textContent = `Kassen invullen${heeftJaren()&&!jaarNaast()&&j!=='alle'?' – '+j:''} (${rows.length} regels)`;
+  $('sheet').innerHTML=''; SHEET=null;
+  $('dlgSheet').showModal();
+  SHEET = jspreadsheet($('sheet'), {
+    data: data.length?data:[SHKOL.map(([k])=>k==='jaar'?stdJaar:'')],
+    columns: SHKOL.map(([k,t,w,soort])=>({ title:t, width:w||60, type: soort==='hidden'?'hidden':'text', align: soort==='num'?'right':'left' })),
+    allowInsertColumn:false, allowDeleteColumn:false, allowRenameColumn:false, columnSorting:true, allowInsertRow:true, allowDeleteRow:true,
+    minSpareRows:1, tableOverflow:false, wordWrap:false, freezeColumns:0, csvHeaders:false,
+    text:{ insertANewRowBefore:'Rij hierboven invoegen', insertANewRowAfter:'Rij hieronder invoegen', deleteSelectedRows:'Rij(en) verwijderen', copy:'Kopiëren', paste:'Plakken', orderAscending:'Sorteer oplopend', orderDescending:'Sorteer aflopend', saveAs:'Opslaan als', about:'', areYouSureToDeleteTheSelectedRows:'Weet je zeker dat je deze rijen wilt verwijderen?' },
+    onchange: (el, cell, x, y, val) => {
+      if(SHBUSY) return; x=+x; y=+y;
+      if(x===SHI('aantal') || x===SHI('prijs')){
+        const a=shNum(SHEET.getValueFromCoords(SHI('aantal'),y)), p=shNum(SHEET.getValueFromCoords(SHI('prijs'),y));
+        if(a!=null && p!=null){ SHBUSY=true; SHEET.setValueFromCoords(SHI('waarde'), y, shTxt(Math.round(a*p*100)/100), true); SHBUSY=false; }
+      }
+      if(x!==SHI('jaar') && stdJaar && !String(SHEET.getValueFromCoords(SHI('jaar'),y)||'').trim() && String(val||'').trim()){ SHBUSY=true; SHEET.setValueFromCoords(SHI('jaar'), y, stdJaar, true); SHBUSY=false; }
+      shTel();
+    },
+    oninsertrow: ()=>shTel(), ondeleterow: ()=>shTel(),
+  });
+  shTel();
+}
+function shVerzamel(){
+  const out=[], fout=[];
+  SHEET.getData().forEach((r,y)=>{
+    if(r.every((v,i)=>SHKOL[i][0]==='id' || !String(v??'').trim())) return;
+    const it = {}; SHKOL.forEach(([k,,,soort],i)=>{ const v=String(r[i]??'').trim(); it[k] = soort==='num' ? shNum(v) : v; });
+    if(!it.obj) fout.push(y+1);
+    if(it.waarde==null && it.aantal!=null && it.prijs!=null) it.waarde = Math.round(it.aantal*it.prijs*100)/100;
+    out.push(it);
+  });
+  return { out, fout };
+}
+function shVerschil(){
+  const { out, fout } = shVerzamel(); const gezien=new Set(), upd=[], add=[];
+  out.forEach(it=>{
+    const o = it.id && SHORIG.get(it.id);
+    if(o && !gezien.has(it.id)){ gezien.add(it.id); const n={...o};
+      SHKOL.forEach(([k])=>{ if(k==='id') return; const v=it[k]; if(v===''||v==null){ if(o[k]!=null && o[k]!=='') delete n[k]; } else n[k]=v; });
+      const nz = (k,v) => { if(v===''||v==null) return null; return SHKOL[SHI(k)][3]==='num' && typeof v==='number' ? Math.round(v*1e5)/1e5 : String(v); };
+      const ch = SHKOL.some(([k])=>k!=='id' && nz(k,o[k])!==nz(k,n[k]));
+      if(ch) SHKOL.forEach(([k,,,soort])=>{ if(soort==='num' && nz(k,o[k])===nz(k,n[k]) && o[k]!=null) n[k]=o[k]; });
+      if(ch) upd.push(n); }
+    else { const n={}; SHKOL.forEach(([k])=>{ if(k!=='id' && it[k]!=='' && it[k]!=null) n[k]=it[k]; }); n.id=newId(); add.push(n); }
+  });
+  const del = [...SHORIG.keys()].filter(id=>!gezien.has(id));
+  return { upd, add, del, fout };
+}
+function shTel(){ if(!SHEET) return; const v=shVerschil();
+  $('shInfo').textContent = (v.upd.length||v.add.length||v.del.length) ? `Nog niet opgeslagen: ${v.upd.length} gewijzigd · ${v.add.length} nieuw · ${v.del.length} verwijderd` : 'Geen wijzigingen.'; }
+$('sheetBtn').onclick = openSheet;
+$('shRij').onclick = () => { if(SHEET) SHEET.insertRow(); };
+$('shAnn').onclick = () => { const v=SHEET?shVerschil():{upd:[],add:[],del:[]}; if((v.upd.length||v.add.length||v.del.length) && !confirm('Wijzigingen niet opslaan?')) return; $('dlgSheet').close(); };
+$('dlgSheet').addEventListener('cancel', e=>{ e.preventDefault(); });
+$('shOk').onclick = async () => {
+  const { upd, add, del, fout } = shVerschil();
+  if(fout.length){ alert(`Bij rij ${fout.slice(0,10).join(', ')} is het Object leeg. Vul het in of maak de rij helemaal leeg.`); return; }
+  if(!upd.length && !add.length && !del.length){ $('dlgSheet').close(); return; }
+  if(!confirm(`Opslaan?\n\n${upd.length} gewijzigd\n${add.length} nieuw\n${del.length} verwijderd`)) return;
+  const U=new Map(upd.map(x=>[x.id,x])), W=new Set(del);
+  await opslaan('bez', items=>[...items.filter(x=>!W.has(x.id)).map(x=>U.get(x.id)||x), ...add], `Spreadsheet opgeslagen (${upd.length+add.length+del.length} regels)`);
+  $('dlgSheet').close();
+};
 
 // ---------- contacten ----------
 const norm = v => String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');
