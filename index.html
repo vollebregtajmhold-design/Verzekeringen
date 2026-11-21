@@ -246,6 +246,54 @@ a.mij{text-decoration:none}
 .fklik2{cursor:pointer;display:inline-block;border-radius:6px;padding:1px 3px}
 .fklik2:hover{background:var(--hl)}
 .fklik2.fon{background:var(--hl);outline:2px solid var(--blue)}
+/* ---------- telefoon ---------- */
+@media (max-width:700px){
+  body{font-size:14px}
+  header{padding:8px 10px;gap:6px 8px}
+  header h1{font-size:16px}
+  header .dot{width:12px;height:12px}
+  #fsBtn{display:none}
+  .user{order:5;width:100%;margin-left:0!important;flex-wrap:nowrap;overflow-x:auto;gap:6px;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+  .user .btn{font-size:12px;padding:5px 9px;white-space:nowrap;flex-shrink:0}
+  nav .in{padding:6px 8px;gap:6px}
+  nav button{font-size:14px;padding:6px 12px;border-width:1px}
+  main{padding:10px 8px 40px}
+  .card{padding:10px;margin-bottom:12px;border-left-width:3px;border-right-width:3px}
+  .card h2{font-size:13px}
+  .card h2 > span[style*="float"]{float:none!important;display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .tools{padding:8px;gap:6px}
+  .tools input[type=search]{flex:1 1 100%;min-width:0}
+  .tools .btn{font-size:12px;padding:5px 10px}
+  .finfo{white-space:normal;font-size:13px}
+  table{font-size:13px}
+  th,td{padding:6px 7px}
+  th{font-size:13px}
+  .dlab{display:none}
+  a.doc{padding:1px 6px;margin-left:4px}
+  .dtbar{gap:10px}
+  .dtpick{flex:1 1 45%}
+  .dtbtn{width:100%;max-width:none;font-size:13px;padding:6px 10px}
+  .dtpop,.dtpop.breedpop{position:fixed;left:8px;right:8px;top:auto;bottom:8px;min-width:0;max-width:none;max-height:72vh;overflow:auto;margin:0}
+  .fgrid{grid-template-columns:1fr 1fr;max-height:none}
+  /* eerste kolom van de Kassen-tabel blijft staan bij zijwaarts scrollen */
+  #dtTab th:first-child,#dtTab td:first-child{position:sticky;left:0;z-index:1;background:var(--card);box-shadow:2px 0 0 #bbb}
+  #dtTab thead th:first-child{background:var(--head)}
+  #dtTab tfoot td:first-child{background:var(--hl)}
+  #dtTab td.dtl{white-space:nowrap}
+  dialog{padding:14px;width:96vw}
+  dialog .knoppen{flex-wrap:wrap}
+  dialog h2{font-size:17px}
+  .cgrid{grid-template-columns:1fr}
+  .wiekeus button{font-size:15px;padding:10px 16px}
+}
+button.sbtn{border:0;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;line-height:1.5;padding:1px 9px;border-radius:6px;color:#fff;background:#7a3e10;display:inline-flex;align-items:center;margin:0 0 0 4px;flex-shrink:0}
+button.sbtn.leeg{background:#fff;color:#7a3e10;border:1px dashed #7a3e10}
+.samtekst{max-height:62vh;overflow:auto;background:#fff;border:1px solid #ddd;border-radius:8px;padding:12px 16px;font-size:14px;line-height:1.55}
+.samtekst h3{font-size:15px;margin:12px 0 4px;color:#7a3e10}
+.samtekst h3:first-child{margin-top:0}
+.samtekst ul{margin:4px 0 8px;padding-left:20px}
+.samtekst p{margin:4px 0}
+#samInvoer{min-height:45vh;font-family:inherit;font-size:14px}
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -256,7 +304,7 @@ a.mij{text-decoration:none}
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.45</span>
+  <span class="versie" title="Versie">v1.47</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="histBtn" hidden title="Wie heeft wat gewijzigd">🕘 Geschiedenis</button>
@@ -375,6 +423,10 @@ a.mij{text-decoration:none}
 <div class="tools" style="margin-bottom:8px"><select id="hWie"><option value="">Iedereen</option></select><select id="hSec"><option value="">Alle tabbladen</option></select><input type="search" id="hZoek" placeholder="Zoek…"></div>
 <div id="histInhoud" class="tw" style="max-height:60vh;overflow:auto"></div>
 <div class="knoppen"><span class="muted" style="flex:1">De laatste 400 wijzigingen worden bewaard.</span><button class="btn blue">Sluiten</button></div></form></dialog>
+<dialog id="dlgSam" class="breed"><form method="dialog"><h2 id="samTitel">📝 Samenvatting</h2>
+<div id="samTekst" class="samtekst"></div>
+<div id="samEdit" hidden><label style="display:block;font-weight:700;font-size:13px;margin:4px 0">Plak of typ hier de samenvatting</label><textarea id="samInvoer" placeholder="Tip: kopjes met # , opsommingen met - , vet met **tekst**"></textarea></div>
+<div class="knoppen"><span class="muted" id="samInfo" style="flex:1;font-size:12px"></span><button type="button" class="btn" id="samWijzig" hidden>✏️ Wijzigen</button><button type="button" class="btn blue" id="samBewaar" hidden>Opslaan</button><button type="button" class="btn" onclick="this.closest('dialog').close()">Sluiten</button></div></form></dialog>
 <div id="toast" hidden></div>
 
 <script type="module">
@@ -401,9 +453,10 @@ const nf = n => n==null ? '' : n.toLocaleString('nl-NL',{maximumFractionDigits:2
 const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const tag = v => v==='ja' ? '<span class="tag ja">Ja</span>' : v==='nee' ? '<span class="tag nee">Nee</span>' : '<span class="muted">–</span>';
 const act = v => v==='ja' ? '<span class="tag act">Actie</span>' : v==='nee' ? '<span class="muted">Nee</span>' : '<span class="muted">–</span>';
-const lk = (u,t='Document') => u ? `<a class="doc" href="${esc(u)}" target="_blank" rel="noopener">📄 ${t}</a>` : '';
+const lk = (u,t='Document') => u ? `<a class="doc" href="${esc(u)}" target="_blank" rel="noopener" title="${t}">📄<span class="dlab"> ${t}</span></a>` : '';
 const sum = (a,f) => a.reduce((t,x)=>t+(f(x)||0),0);
 const fk = (sec,x) => { const n=(x.files||[]).length; return n ? `<button type="button" class="doc fbtn" data-fsec="${sec}" data-fid="${esc(x.id)}" title="Bestanden">📎 ${n}</button>` : (EDIT&&BEHEER ? `<button type="button" class="doc fbtn leeg" data-fsec="${sec}" data-fid="${esc(x.id)}" title="Bestand uploaden">📎 +</button>` : ''); };
+const sk = (sec,x) => x.samenvatting ? `<button type="button" class="doc sbtn" data-ssec="${sec}" data-sid="${esc(x.id)}" title="Samenvatting">📝<span class="dlab"> Samenvatting</span></button>` : (EDIT&&BEHEER ? `<button type="button" class="doc sbtn leeg" data-ssec="${sec}" data-sid="${esc(x.id)}" title="Samenvatting toevoegen">📝 +</button>` : '');
 const secVan = id => ['bedrijf','prive'].find(k=>D[k].some(x=>x.id===id));
 const eb = (sec,id) => `<span class="eb"><button type="button" data-edit="${sec}" data-id="${esc(id)}" title="Wijzigen">✏️</button><button type="button" data-del="${sec}" data-id="${esc(id)}" title="Verwijderen">🗑️</button></span>`;
 const withIds = (items, sec) => (items||[]).map((x,i) => x.id ? x : {...x, id: sec+'-'+i});
@@ -450,7 +503,7 @@ function render(){
   const byMij={}; alle.forEach(x=>{ if(x.premie){const k=x.mij||'Onbekend'; byMij[k]=(byMij[k]||0)+x.premie;} }); bars('barsMij',byMij);
   const byLoc={}; D.bez.forEach(x=>{ const k=locName(x.loc||'?'); byLoc[k]=(byLoc[k]||0)+(x.waarde||0); }); bars('barsLoc',byLoc);
   $('actie').innerHTML = '<thead><tr><th>Wat</th><th>Categorie</th><th>Maatschappij</th><th>Polisnummer</th><th class="r">Premie</th></tr></thead><tbody>' +
-    alle.filter(x=>x.actie==='ja').map(x=>`<tr><td><div class="wl"><span>${esc(x.wat)}</span>${lk(x.link)}${fk(secVan(x.id),x)}</div></td><td>${esc(x.cat)}</td><td>${esc(x.mij)}</td><td>${esc(x.polis)}</td><td class="r">${eur(x.premie)}</td></tr>`).join('') + '</tbody>';
+    alle.filter(x=>x.actie==='ja').map(x=>`<tr><td><div class="wl"><span>${esc(x.wat)}</span>${lk(x.link)}${sk(secVan(x.id),x)}${fk(secVan(x.id),x)}</div></td><td>${esc(x.cat)}</td><td>${esc(x.mij)}</td><td>${esc(x.polis)}</td><td class="r">${eur(x.premie)}</td></tr>`).join('') + '</tbody>';
 
   fillSelect('fB', [...new Set(D.bedrijf.map(x=>x.cat).filter(Boolean))].sort());
   fillSelect('mB', [...new Set(D.bedrijf.map(x=>x.mij).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'nl')));
@@ -477,7 +530,7 @@ function drawPolis(id, sec, q, extra){
   const r = D[sec].filter(x=>(!t || [x.wat,x.mij,x.polis,x.cat,x.opm].join(' ').toLowerCase().includes(t)) && (!extra || extra(x)));
   r.sort((a,b)=>{const A=a[st.key]??'',B=b[st.key]??''; return (typeof A==='number'&&typeof B==='number'?A-B:String(A).localeCompare(String(B),'nl',{numeric:true}))*st.dir;});
   $(id).innerHTML = '<thead><tr>'+cols.map(c=>`<th class="${c[2]||''}" data-k="${c[0]}">${c[1]}${st.key===c[0]?(st.dir>0?' ▲':' ▼'):''}</th>`).join('')+(EDIT?'<th></th>':'')+'</tr></thead><tbody>'+
-    r.map(x=>`<tr><td class="muted">${esc(x.nr)}</td><td><div class="wl"><span>${esc(x.wat)}</span>${lk(x.link)}${fk(sec,x)}</div></td><td>${sec==='bedrijf'&&x.cat?`<span class="fklik${$('fB').value===x.cat?' fon':''}" data-fsel="fB" data-fval="${esc(x.cat)}" title="Klik: alleen deze categorie">${esc(x.cat)}</span>`:esc(x.cat)}</td><td>${x.mij?`<span class="fklik${$(FS.m).value===x.mij?' fon':''}" data-fsel="${FS.m}" data-fval="${esc(x.mij)}" title="Klik: alleen deze maatschappij">${esc(x.mij)}</span>${heeftContact(x.mij)?` <a class="mij" data-mij="${esc(x.mij)}" title="Contactgegevens">📇</a>`:''}`:mijLink(x.mij)}</td><td>${esc(x.polis)}</td><td>${tag(x.verz)}</td><td><span class="fklik2${$(FS.a).value===(x.actie||'-')?' fon':''}" data-fsel="${FS.a}" data-fval="${x.actie||'-'}" title="Klik: alleen deze">${act(x.actie)}</span></td><td class="r">${eur(x.premie)}</td><td class="muted">${esc(x.opm)}</td>${EDIT?`<td>${eb(sec,x.id)}</td>`:''}</tr>`).join('')+
+    r.map(x=>`<tr><td class="muted">${esc(x.nr)}</td><td><div class="wl"><span>${esc(x.wat)}</span>${lk(x.link)}${sk(sec,x)}${fk(sec,x)}</div></td><td>${sec==='bedrijf'&&x.cat?`<span class="fklik${$('fB').value===x.cat?' fon':''}" data-fsel="fB" data-fval="${esc(x.cat)}" title="Klik: alleen deze categorie">${esc(x.cat)}</span>`:esc(x.cat)}</td><td>${x.mij?`<span class="fklik${$(FS.m).value===x.mij?' fon':''}" data-fsel="${FS.m}" data-fval="${esc(x.mij)}" title="Klik: alleen deze maatschappij">${esc(x.mij)}</span>${heeftContact(x.mij)?` <a class="mij" data-mij="${esc(x.mij)}" title="Contactgegevens">📇</a>`:''}`:mijLink(x.mij)}</td><td>${esc(x.polis)}</td><td>${tag(x.verz)}</td><td><span class="fklik2${$(FS.a).value===(x.actie||'-')?' fon':''}" data-fsel="${FS.a}" data-fval="${x.actie||'-'}" title="Klik: alleen deze">${act(x.actie)}</span></td><td class="r">${eur(x.premie)}</td><td class="muted">${esc(x.opm)}</td>${EDIT?`<td>${eb(sec,x.id)}</td>`:''}</tr>`).join('')+
     `</tbody><tfoot><tr><td colspan="7">Totaal (${r.length} regels)</td><td class="r">${eur(sum(r,x=>x.premie))}</td><td${EDIT?' colspan="2"':''}></td></tr></tfoot>`;
   $(id).querySelectorAll('th[data-k]').forEach(th=>th.onclick=()=>{ if(st.key===th.dataset.k) st.dir=-st.dir; else {st.key=th.dataset.k;st.dir=1;} drawPolis(id,sec,q,extra); });
   $(q).oninput = () => drawPolis(id,sec,q,extra);
@@ -854,7 +907,7 @@ function kiesWie(){
 const SECNAAM = { bedrijf:'Zakelijk', prive:'Privé', priveNotes:'Notities', bez:'Kassen', tijd:'Aandachtspunten', extra:'Links', contacten:'Contacten', dtviews:'Draaitabel-weergaven' };
 const VELD = { wat:'Wat', cat:'Categorie', mij:'Maatschappij', polis:'Polisnummer', verz:'Verzekerd', actie:'Actie', premie:'Premie', opm:'Opmerking', link:'Link', nr:'Nr',
   loc:'Locatie', afd:'Afdeling', sub:'Soort', obj:'Object', aantal:'Aantal', eenh:'Eenheid', prijs:'Prijs', waarde:'Waarde', promille:'Premie ‰', dekking:'Dekking',
-  tekst:'Tekst', datum:'Datum', wie:'Aanwezig', punten:'Punten', naam:'Naam', org:'Maatschappij', rol:'Rol', tel:'Telefoon', mob:'Mobiel', email:'E-mail', web:'Website', login:'Klantportaal', adres:'Adres', klantnr:'Klantnummer', files:'Bestanden' };
+  tekst:'Tekst', datum:'Datum', wie:'Aanwezig', punten:'Punten', naam:'Naam', org:'Maatschappij', rol:'Rol', tel:'Telefoon', mob:'Mobiel', email:'E-mail', web:'Website', login:'Klantportaal', adres:'Adres', klantnr:'Klantnummer', files:'Bestanden', samenvatting:'Samenvatting', samDatum:'Datum samenvatting', samDoor:'Samenvatting door' };
 const itemNaam = x => x ? (x.wat||x.obj||x.tekst||x.naam||x.datum||'?') + (x.loc?` (${locName(x.loc)}${x.afd&&x.afd!=='-'?' · '+x.afd:''})`:'') : '?';
 const toonW = (k,v) => v==null||v==='' ? '–' : k==='files' ? (v.length+' bestand'+(v.length===1?'':'en')) : k==='punten' ? (v.length+' punten') : typeof v==='number' ? nf(v) : String(v);
 function verschil(sec, oud, nieuw){
@@ -1169,6 +1222,45 @@ $('dtDicht').onclick = ()=>{ DTOPEN.clear(); drawDT(); };
   const sel = $(c.dataset.fsel); sel.value = sel.value===c.dataset.fval ? '' : c.dataset.fval;
   sel.dispatchEvent(new Event('input'));
 }));
+
+// ---------- samenvatting per polis ----------
+let SCUR = null;
+function mdLite(t){
+  const regels = String(t||'').split('\n'); let h='', inLijst=false;
+  const inl = x => esc(x).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/⚠️/g,'⚠️');
+  regels.forEach(r=>{
+    const l=r.trim();
+    if(/^[-*•]\s+/.test(l)){ if(!inLijst){ h+='<ul>'; inLijst=true; } h+=`<li>${inl(l.replace(/^[-*•]\s+/,''))}</li>`; return; }
+    if(inLijst){ h+='</ul>'; inLijst=false; }
+    if(!l) return;
+    if(/^#{1,4}\s+/.test(l)) h+=`<h3>${inl(l.replace(/^#{1,4}\s+/,''))}</h3>`;
+    else h+=`<p>${inl(l)}</p>`;
+  });
+  if(inLijst) h+='</ul>';
+  return h || '<p class="muted">Nog geen samenvatting.</p>';
+}
+function toonSam(bewerk){
+  const x = D[SCUR.sec].find(i=>i.id===SCUR.id); if(!x) return;
+  $('samTitel').textContent = '📝 ' + (x.wat||x.obj||x.tekst||'Samenvatting');
+  $('samTekst').innerHTML = mdLite(x.samenvatting);
+  $('samInfo').textContent = x.samDatum ? `Laatst bijgewerkt: ${new Date(x.samDatum).toLocaleDateString('nl-NL')}${x.samDoor?' door '+x.samDoor:''}` : '';
+  $('samTekst').hidden = !!bewerk; $('samEdit').hidden = !bewerk;
+  $('samWijzig').hidden = !!bewerk || !BEHEER; $('samBewaar').hidden = !bewerk;
+  if(bewerk){ $('samInvoer').value = x.samenvatting||''; setTimeout(()=>$('samInvoer').focus(),50); }
+}
+document.addEventListener('click', e=>{
+  const b = e.target.closest('[data-ssec]'); if(!b) return;
+  e.preventDefault(); e.stopPropagation();
+  SCUR = { sec:b.dataset.ssec, id:b.dataset.sid };
+  const x = D[SCUR.sec].find(i=>i.id===SCUR.id);
+  toonSam(!x?.samenvatting && EDIT && BEHEER); $('dlgSam').showModal();
+}, true);
+$('samWijzig').onclick = async () => { if(!EDIT){ const w = await kiesWie(); if(!w) return; } toonSam(true); };
+$('samBewaar').onclick = async () => {
+  const t = $('samInvoer').value.trim();
+  await opslaan(SCUR.sec, items=>items.map(i=>{ if(i.id!==SCUR.id) return i; const y={...i}; if(t){ y.samenvatting=t; y.samDatum=new Date().toISOString(); y.samDoor=wieNaam(); } else { delete y.samenvatting; delete y.samDatum; delete y.samDoor; } return y; }), t?'Samenvatting opgeslagen':'Samenvatting verwijderd');
+  toonSam(false);
+};
 
 // ---------- contacten ----------
 const norm = v => String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');
