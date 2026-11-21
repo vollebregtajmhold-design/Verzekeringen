@@ -236,6 +236,10 @@ table.dt th.srton{color:var(--blue)}
 .vnieuw input{flex:1;font:inherit;font-size:13px;padding:5px 8px;border:1px solid #aaa;border-radius:6px}
 .vnieuw button{font:inherit;font-weight:700;font-size:12px;padding:5px 10px;border:2px solid var(--green);border-radius:8px;background:#fff;color:var(--green);cursor:pointer;white-space:nowrap}
 @media (max-width:700px){.dtpop.breedpop{min-width:0;left:auto;right:0}}
+.fklik{cursor:pointer;border-bottom:1px dotted #888}
+.fklik:hover{color:var(--blue);border-bottom-color:var(--blue)}
+.fklik.fon{background:var(--hl);color:var(--blue);font-weight:700;border-radius:4px;padding:1px 4px;border-bottom:0}
+a.mij{text-decoration:none}
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -246,7 +250,7 @@ table.dt th.srton{color:var(--blue)}
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.40</span>
+  <span class="versie" title="Versie">v1.42</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="histBtn" hidden title="Wie heeft wat gewijzigd">🕘 Geschiedenis</button>
@@ -291,6 +295,7 @@ table.dt th.srton{color:var(--blue)}
     <div class="tools">
       <input type="search" id="qB" placeholder="Zoek op naam, maatschappij of polisnummer…">
       <select id="fB"><option value="">Alle categorieën</option></select>
+      <select id="mB"><option value="">Alle maatschappijen</option></select>
       <select id="aB"><option value="">Actie: alles</option><option value="ja">Alleen actie nodig</option></select>
       <button class="btn add" data-add="bedrijf">+ Toevoegen</button>
     </div>
@@ -348,7 +353,7 @@ table.dt th.srton{color:var(--blue)}
 </main>
 </div>
 <dialog id="dlg"><form id="frm" method="dialog"><h2 id="dlgTitel"></h2><div id="velden"></div>
-<div class="knoppen"><button class="btn" value="annuleer" formnovalidate>Annuleren</button><button class="btn blue" id="opslaan" value="ok">Opslaan</button></div></form></dialog>
+<div class="knoppen"><button type="button" class="btn" onclick="this.closest('dialog').close('annuleer')">Annuleren</button><button class="btn blue" id="opslaan" value="ok">Opslaan</button></div></form></dialog>
 <dialog id="dlgInfo" class="breed"><form method="dialog"><h2 id="infoTitel"></h2><div id="infoInhoud" class="tw"></div><div class="knoppen"><span id="infoKnop" class="schakel" style="float:none"><button type="button" data-m="afd">Per afdeling</button><button type="button" data-m="obj">Per object</button></span><button type="button" class="btn klein" id="infoOpen">▼ Alles open</button><button type="button" class="btn klein" id="infoDicht">▶ Alles dicht</button><button type="button" class="btn add" id="infoAdd" hidden>+ Object toevoegen</button><span style="flex:1"></span><button class="btn blue">Sluiten</button></div></form></dialog>
 <dialog id="dlgFiles"><form method="dialog"><h2 id="filesTitel">Bestanden</h2><ul id="filesLijst" class="flijst"></ul>
 <div class="knoppen"><label class="btn add" id="filesUp">⬆ Bestand uploaden<input type="file" id="filesInput" multiple hidden></label><span style="flex:1"></span><button class="btn blue">Sluiten</button></div></form></dialog>
@@ -356,7 +361,7 @@ table.dt th.srton{color:var(--blue)}
 <label>Wachtwoord</label><input type="password" id="pw1" autocomplete="current-password">
 <div id="pw2wrap"><label>Nog een keer</label><input type="password" id="pw2" autocomplete="new-password"></div>
 <p class="msg" id="pwFout"></p>
-<div class="knoppen"><button class="btn" value="annuleer" formnovalidate>Annuleren</button><button class="btn blue" value="ok">OK</button></div></form></dialog>
+<div class="knoppen"><button type="button" class="btn" onclick="this.closest('dialog').close('annuleer')">Annuleren</button><button class="btn blue" value="ok">OK</button></div></form></dialog>
 <dialog id="dlgWie"><form method="dialog"><h2>Wie gaat er bewerken?</h2><div class="wiekeus" id="wieKnoppen"></div>
 <div class="knoppen"><button class="btn" value="">Annuleren</button></div></form></dialog>
 <dialog id="dlgHist" class="breed"><form method="dialog"><h2>🕘 Geschiedenis</h2>
@@ -441,7 +446,8 @@ function render(){
     alle.filter(x=>x.actie==='ja').map(x=>`<tr><td><div class="wl"><span>${esc(x.wat)}</span>${lk(x.link)}${fk(secVan(x.id),x)}</div></td><td>${esc(x.cat)}</td><td>${esc(x.mij)}</td><td>${esc(x.polis)}</td><td class="r">${eur(x.premie)}</td></tr>`).join('') + '</tbody>';
 
   fillSelect('fB', [...new Set(D.bedrijf.map(x=>x.cat).filter(Boolean))].sort());
-  drawPolis('tB','bedrijf','qB', x=>(!$('fB').value||x.cat===$('fB').value)&&(!$('aB').value||x.actie==='ja'));
+  fillSelect('mB', [...new Set(D.bedrijf.map(x=>x.mij).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'nl')));
+  drawPolis('tB','bedrijf','qB', x=>(!$('fB').value||x.cat===$('fB').value)&&(!$('mB').value||x.mij===$('mB').value)&&(!$('aB').value||x.actie==='ja'));
   drawPolis('tP','prive','qP');
   $('notes').innerHTML = D.priveNotes.map(n=>`<li>${esc(n.tekst)}${lk(n.link)}${fk('priveNotes',n)} ${eb('priveNotes',n.id)}</li>`).join('');
 
@@ -462,11 +468,11 @@ function drawPolis(id, sec, q, extra){
   const r = D[sec].filter(x=>(!t || [x.wat,x.mij,x.polis,x.cat,x.opm].join(' ').toLowerCase().includes(t)) && (!extra || extra(x)));
   r.sort((a,b)=>{const A=a[st.key]??'',B=b[st.key]??''; return (typeof A==='number'&&typeof B==='number'?A-B:String(A).localeCompare(String(B),'nl',{numeric:true}))*st.dir;});
   $(id).innerHTML = '<thead><tr>'+cols.map(c=>`<th class="${c[2]||''}" data-k="${c[0]}">${c[1]}${st.key===c[0]?(st.dir>0?' ▲':' ▼'):''}</th>`).join('')+(EDIT?'<th></th>':'')+'</tr></thead><tbody>'+
-    r.map(x=>`<tr><td class="muted">${esc(x.nr)}</td><td><div class="wl"><span>${esc(x.wat)}</span>${lk(x.link)}${fk(sec,x)}</div></td><td>${esc(x.cat)}</td><td>${mijLink(x.mij)}</td><td>${esc(x.polis)}</td><td>${tag(x.verz)}</td><td>${act(x.actie)}</td><td class="r">${eur(x.premie)}</td><td class="muted">${esc(x.opm)}</td>${EDIT?`<td>${eb(sec,x.id)}</td>`:''}</tr>`).join('')+
+    r.map(x=>`<tr><td class="muted">${esc(x.nr)}</td><td><div class="wl"><span>${esc(x.wat)}</span>${lk(x.link)}${fk(sec,x)}</div></td><td>${sec==='bedrijf'&&x.cat?`<span class="fklik${$('fB').value===x.cat?' fon':''}" data-fsel="fB" data-fval="${esc(x.cat)}" title="Klik: alleen deze categorie">${esc(x.cat)}</span>`:esc(x.cat)}</td><td>${sec==='bedrijf'&&x.mij?`<span class="fklik${$('mB').value===x.mij?' fon':''}" data-fsel="mB" data-fval="${esc(x.mij)}" title="Klik: alleen deze maatschappij">${esc(x.mij)}</span>${heeftContact(x.mij)?` <a class="mij" data-mij="${esc(x.mij)}" title="Contactgegevens">📇</a>`:''}`:mijLink(x.mij)}</td><td>${esc(x.polis)}</td><td>${tag(x.verz)}</td><td>${act(x.actie)}</td><td class="r">${eur(x.premie)}</td><td class="muted">${esc(x.opm)}</td>${EDIT?`<td>${eb(sec,x.id)}</td>`:''}</tr>`).join('')+
     `</tbody><tfoot><tr><td colspan="7">Totaal (${r.length} regels)</td><td class="r">${eur(sum(r,x=>x.premie))}</td><td${EDIT?' colspan="2"':''}></td></tr></tfoot>`;
   $(id).querySelectorAll('th[data-k]').forEach(th=>th.onclick=()=>{ if(st.key===th.dataset.k) st.dir=-st.dir; else {st.key=th.dataset.k;st.dir=1;} drawPolis(id,sec,q,extra); });
   $(q).oninput = () => drawPolis(id,sec,q,extra);
-  if(sec==='bedrijf'){ $('fB').oninput = $('aB').oninput = () => drawPolis(id,sec,q,extra); }
+  if(sec==='bedrijf'){ $('fB').oninput = $('mB').oninput = $('aB').oninput = () => drawPolis(id,sec,q,extra); }
 }
 
 const ZOPEN = new Set();
@@ -1144,6 +1150,13 @@ $('dtOpen').onclick = ()=>{ // alle groepen (behalve het laatste niveau) open
   D.bez.forEach(x=>{ const p=[]; DT.rij.slice(0,-1).forEach(k=>{ p.push(DT_VELDEN[k].g(x)); DTOPEN.add(p.join('␟')); }); });
   drawDT(); };
 $('dtDicht').onclick = ()=>{ DTOPEN.clear(); drawDT(); };
+
+// klik op categorie/maatschappij in Zakelijk: filteren, nog een keer: alles
+$('tB').addEventListener('click', e=>{
+  const c = e.target.closest('[data-fsel]'); if(!c) return;
+  const sel = $(c.dataset.fsel); sel.value = sel.value===c.dataset.fval ? '' : c.dataset.fval;
+  sel.dispatchEvent(new Event('input'));
+});
 
 // ---------- contacten ----------
 const norm = v => String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');
