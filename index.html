@@ -219,6 +219,8 @@ table.dt th.c{text-align:center}
 .dtpop .voet{display:flex;gap:8px;margin-top:8px;border-top:1px solid #eee;padding-top:8px}
 .dtpop .voet button{font:inherit;font-weight:700;font-size:13px;padding:5px 14px;border:2px solid var(--green);border-radius:8px;background:#fff;color:var(--green);cursor:pointer}
 .dtpop .voet button:hover{background:var(--green);color:#fff}
+table.dt td.dtl.ouder{color:#999;font-weight:400;font-size:13px}
+#dtVorm button{padding:7px 12px}
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -229,7 +231,7 @@ table.dt th.c{text-align:center}
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.34</span>
+  <span class="versie" title="Versie">v1.35</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="histBtn" hidden title="Wie heeft wat gewijzigd">🕘 Geschiedenis</button>
@@ -316,6 +318,7 @@ table.dt th.c{text-align:center}
         <div class="dtpick"><div class="dtlab">Groeperen (rijen)</div><button type="button" class="dtbtn" data-zone="rij"><span class="dtsel"></span> ▾</button><div class="dtpop" data-zone="rij" hidden></div></div>
         <div class="dtpick"><div class="dtlab">Kolommen</div><button type="button" class="dtbtn" data-zone="kol"><span class="dtsel"></span> ▾</button><div class="dtpop" data-zone="kol" hidden></div></div>
         <div class="dtpick"><div class="dtlab">Waarden</div><button type="button" class="dtbtn" data-zone="val"><span class="dtsel"></span> ▾</button><div class="dtpop" data-zone="val" hidden></div></div>
+        <div class="dtpick"><div class="dtlab">Rijen tonen</div><span id="dtVorm" class="schakel" style="float:none"><button type="button" data-v="in">Ingesprongen</button><button type="button" data-v="naast">Naast elkaar</button></span></div>
       </div>
     </div>
     <div class="tools"><input type="search" id="dtZoek" placeholder="Filter: zoek object, soort, opmerking…"><button type="button" class="btn klein" id="dtOpen">▼ Alles open</button><button type="button" class="btn klein" id="dtDicht">▶ Alles dicht</button></div>
@@ -919,10 +922,12 @@ function drawDT(){
   const kolNaam = k => k.join(' · ');
   // kop
   const nk = DT.kol.length, nm = M.length, hrows = nk + (nm>1?1:0) || 1;
+  const naast = DT.vorm==='naast';
+  document.querySelectorAll('#dtVorm button').forEach(b=>b.classList.toggle('on', b.dataset.v===(naast?'naast':'in')));
   let h = '<thead>';
   for(let lvl=0; lvl<hrows; lvl++){
     h += '<tr>';
-    if(lvl===0) h += `<th rowspan="${hrows}">${esc(DT.rij.map(k=>DT_VELDEN[k].n).join(' / ')||'')}</th>`;
+    if(lvl===0) h += naast ? (DT.rij.length ? DT.rij.map(k=>`<th rowspan="${hrows}">${esc(DT_VELDEN[k].n)}</th>`).join('') : `<th rowspan="${hrows}"></th>`) : `<th rowspan="${hrows}">${esc(DT.rij.map(k=>DT_VELDEN[k].n).join(' / ')||'')}</th>`;
     if(lvl<nk){
       let i=0; while(i<keys.length){ let j=i; const pre=JSON.stringify(keys[i].slice(0,lvl+1)); while(j<keys.length && JSON.stringify(keys[j].slice(0,lvl+1))===pre) j++;
         h += `<th class="c" colspan="${(j-i)*nm}">${esc(keys[i][lvl])}</th>`; i=j; }
@@ -946,12 +951,15 @@ function drawDT(){
     Object.keys(G).sort(dtSort(k)).forEach(v=>{
       const p=[...pad,v], key=p.join('␟'), laatste = d===DT.rij.length-1, open = !laatste && (DTOPEN.has(key) || !!t);
       const f = x=>filtR(x) && DT_VELDEN[k].g(x)===v;
-      h += `<tr class="d${Math.min(d,3)}"><td class="dtl${laatste?'':' tog'}" data-dtk="${esc(key)}" style="padding-left:${10+d*20}px">${laatste?'':`<span class="pijl">${open?'▼':'▶'}</span>`}${esc(v)}<span class="aantal">(${G[v].length})</span></td>${rijCellen(G[v], f, p.join(' – '))}</tr>`;
+      const lab = `<td class="dtl${laatste?'':' tog'}" data-dtk="${esc(key)}" style="padding-left:${naast?10:10+d*20}px">${laatste?'':`<span class="pijl">${open?'▼':'▶'}</span>`}${esc(v)}<span class="aantal">(${G[v].length})</span></td>`;
+      const voor = naast ? pad.map(x=>`<td class="dtl ouder">${esc(x)}</td>`).join('') : '';
+      const na = naast ? '<td class="dtl"></td>'.repeat(DT.rij.length-d-1) : '';
+      h += `<tr class="d${Math.min(d,3)}">${voor}${lab}${na}${rijCellen(G[v], f, p.join(' – '))}</tr>`;
       if(open) groep(G[v], d+1, p, f);
     });
   }
   if(DT.rij.length) groep(r, 0, [], ()=>true);
-  h += `</tbody><tfoot><tr class="tot"><td>Totaal</td>${rijCellen(r, ()=>true, 'Alles')}</tr></tfoot>`;
+  h += `</tbody><tfoot><tr class="tot"><td${naast&&DT.rij.length>1?` colspan="${DT.rij.length}"`:''}>Totaal</td>${rijCellen(r, ()=>true, 'Alles')}</tr></tfoot>`;
   $('dtTab').innerHTML = h;
   $('dtTab').dataset.zoek = t;
 }
@@ -1019,6 +1027,7 @@ document.querySelectorAll('#dt .dtpop').forEach(pop=>{
   pop.addEventListener('change', e=>{ const s=e.target.closest('select[data-agg]'); if(!s) return; DT.val[+s.dataset.agg].a = s.value; dtBewaar(); drawDT(); });
 });
 document.addEventListener('click', e=>{ if(!e.target.closest('#dt .dtpick')){ let x=false; document.querySelectorAll('#dt .dtpop').forEach(p=>{ if(!p.hidden){ p.hidden=true; x=true; } }); if(x) dtKnoppen(); } });
+document.querySelectorAll('#dtVorm button').forEach(b=>b.onclick=()=>{ DT.vorm = b.dataset.v==='naast'?'naast':'in'; dtBewaar(); drawDT(); });
 $('dtStd').onclick = ()=>{ DT=JSON.parse(JSON.stringify(DT_STD)); DTOPEN.clear(); dtBewaar(); drawDT(); };
 $('dtZoek').oninput = drawDT;
 $('dtOpen').onclick = ()=>{ // alle groepen (behalve het laatste niveau) open
