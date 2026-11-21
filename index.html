@@ -313,6 +313,8 @@ body:not(.beheer) #sheetBtn{display:none}
 #shWrap .jexcel tbody td.readonly{color:#333;background:#f4f4f4}
 #shWrap input,#shWrap textarea{width:auto;padding:0;border:0;border-radius:0}
 #shInfo{font-size:13px;margin-top:6px}
+#shWrap .jexcel > thead > tr > td{cursor:pointer}
+#shWrap .jexcel > thead > tr > td:hover{background:#cfdcf7}
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -323,7 +325,7 @@ body:not(.beheer) #sheetBtn{display:none}
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.50</span>
+  <span class="versie" title="Versie">v1.51</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="histBtn" hidden title="Wie heeft wat gewijzigd">🕘 Geschiedenis</button>
@@ -430,7 +432,7 @@ body:not(.beheer) #sheetBtn{display:none}
 <dialog id="dlg"><form id="frm" method="dialog"><h2 id="dlgTitel"></h2><div id="velden"></div>
 <div class="knoppen"><button type="button" class="btn" onclick="this.closest('dialog').close('annuleer')">Annuleren</button><button class="btn blue" id="opslaan" value="ok">Opslaan</button></div></form></dialog>
 <dialog id="dlgSheet"><div class="shkop"><h2 id="shTitel">Spreadsheet</h2><div class="shknop"><button type="button" class="btn" id="shRij">➕ Rij</button><button type="button" class="btn" id="shAnn">Annuleren</button><button type="button" class="btn blue" id="shOk">💾 Opslaan</button></div></div>
-<div class="shuitleg">Klik in een vak en typ. <b>Ctrl+C / Ctrl+V</b> werkt, ook vanuit Excel. Sleep het <b>blokje rechtsonder</b> om te kopiëren naar beneden. <b>Ctrl+Z</b> = terug. Rechtsklik = rij toevoegen of verwijderen. Waarde = aantal × prijs (vanzelf).</div>
+<div class="shuitleg">Klik in een vak en typ. <b>Ctrl+C / Ctrl+V</b> werkt, ook vanuit Excel. Sleep het <b>blokje rechtsonder</b> om te kopiëren naar beneden. <b>Ctrl+Z</b> = terug. Rechtsklik = rij toevoegen of verwijderen. Waarde = aantal × prijs (vanzelf). <b>Klik op een kop</b> om te sorteren (nog eens klikken = andersom).</div>
 <div id="shWrap"><div id="sheet"></div></div><div id="shInfo" class="muted"></div></dialog>
 <dialog id="dlgInfo" class="breed"><form method="dialog"><h2 id="infoTitel"></h2><div id="infoInhoud" class="tw"></div><div class="knoppen"><span id="infoKnop" class="schakel" style="float:none"><button type="button" data-m="afd">Per afdeling</button><button type="button" data-m="obj">Per object</button></span><button type="button" class="btn klein" id="infoOpen">▼ Alles open</button><button type="button" class="btn klein" id="infoDicht">▶ Alles dicht</button><button type="button" class="btn add" id="infoAdd" hidden>+ Object toevoegen</button><span style="flex:1"></span><button class="btn blue">Sluiten</button></div></form></dialog>
 <dialog id="dlgFiles"><form method="dialog"><h2 id="filesTitel">Bestanden</h2><ul id="filesLijst" class="flijst"></ul>
@@ -1449,6 +1451,11 @@ async function openSheet(){
     data: data.length?data:[SHKOL.map(([k])=>k==='jaar'?stdJaar:'')],
     columns: SHKOL.map(([k,t,w,soort])=>({ title:t, width:w||60, type: soort==='hidden'?'hidden':'text', align: soort==='num'?'right':'left' })),
     allowInsertColumn:false, allowDeleteColumn:false, allowRenameColumn:false, columnSorting:true, allowInsertRow:true, allowDeleteRow:true,
+    sorting: d => (a,b) => { const x=String(a[1]??''), y=String(b[1]??'');
+      if(x===''&&y!=='') return 1; if(y===''&&x!=='') return -1;
+      const isn = v => /^[-\d.,\s€]+$/.test(v) && shNum(v)!=null;
+      const c = isn(x)&&isn(y) ? shNum(x)-shNum(y) : x.localeCompare(y,'nl',{numeric:true});
+      return d ? -c : c; },
     minSpareRows:1, tableOverflow:false, wordWrap:false, freezeColumns:0, csvHeaders:false,
     text:{ insertANewRowBefore:'Rij hierboven invoegen', insertANewRowAfter:'Rij hieronder invoegen', deleteSelectedRows:'Rij(en) verwijderen', copy:'Kopiëren', paste:'Plakken', orderAscending:'Sorteer oplopend', orderDescending:'Sorteer aflopend', saveAs:'Opslaan als', about:'', areYouSureToDeleteTheSelectedRows:'Weet je zeker dat je deze rijen wilt verwijderen?' },
     onchange: (el, cell, x, y, val) => {
@@ -1493,6 +1500,7 @@ function shVerschil(){
 function shTel(){ if(!SHEET) return; const v=shVerschil();
   $('shInfo').textContent = (v.upd.length||v.add.length||v.del.length) ? `Nog niet opgeslagen: ${v.upd.length} gewijzigd · ${v.add.length} nieuw · ${v.del.length} verwijderd` : 'Geen wijzigingen.'; }
 $('sheetBtn').onclick = openSheet;
+$('sheet').addEventListener('click', e=>{ const th=e.target.closest('thead td[data-x]'); if(!th||!SHEET||e.detail>1) return; SHEET.orderBy(+th.dataset.x); });
 $('shRij').onclick = () => { if(SHEET) SHEET.insertRow(); };
 $('shAnn').onclick = () => { const v=SHEET?shVerschil():{upd:[],add:[],del:[]}; if((v.upd.length||v.add.length||v.del.length) && !confirm('Wijzigingen niet opslaan?')) return; $('dlgSheet').close(); };
 $('dlgSheet').addEventListener('cancel', e=>{ e.preventDefault(); });
