@@ -324,6 +324,7 @@ body:not(.beheer) #sheetBtn{display:none}
 table.dt .grp{border-left:3px solid #6b6b6b!important}
 #dtTerug{font:inherit;font-weight:700;font-size:20px;line-height:1;padding:6px 14px;border:2px solid var(--green);border-radius:8px;background:var(--mint);color:var(--ink);cursor:pointer}
 #dtTerug:disabled{opacity:.35;cursor:default}
+#filesLijst a.btn.klein{text-decoration:none;padding:4px 10px}
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -334,7 +335,7 @@ table.dt .grp{border-left:3px solid #6b6b6b!important}
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.64</span>
+  <span class="versie" title="Versie">v1.65</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="histBtn" hidden title="Wie heeft wat gewijzigd">🕘 Geschiedenis</button>
@@ -443,7 +444,7 @@ table.dt .grp{border-left:3px solid #6b6b6b!important}
 <div id="shWrap"><div id="sheet"></div></div><div id="shInfo" class="muted"></div></dialog>
 <dialog id="dlgInfo" class="breed"><form method="dialog"><h2 id="infoTitel"></h2><div id="infoInhoud" class="tw"></div><div class="knoppen"><span id="infoKnop" class="schakel" style="float:none"><button type="button" data-m="afd">Per afdeling</button><button type="button" data-m="obj">Per object</button></span><button type="button" class="btn klein" id="infoOpen">▼ Alles open</button><button type="button" class="btn klein" id="infoDicht">▶ Alles dicht</button><button type="button" class="btn add" id="infoAdd" hidden>+ Object toevoegen</button><span style="flex:1"></span><button class="btn blue">Sluiten</button></div></form></dialog>
 <dialog id="dlgFiles"><form method="dialog"><h2 id="filesTitel">Bestanden</h2><ul id="filesLijst" class="flijst"></ul>
-<div class="knoppen"><label class="btn add" id="filesUp">⬆ Bestand uploaden<input type="file" id="filesInput" multiple hidden></label><span style="flex:1"></span><button class="btn blue">Sluiten</button></div></form></dialog>
+<div class="knoppen"><button type="button" class="btn add" id="linkAdd">🔗 Drive-link toevoegen</button><label class="btn add" id="filesUp">⬆ Bestand uploaden<input type="file" id="filesInput" multiple hidden></label><span style="flex:1"></span><button class="btn blue">Sluiten</button></div></form></dialog>
 <dialog id="dlgPw"><form id="frmPw" method="dialog"><h2 id="pwTitel">🔒 Privé</h2><p id="pwTekst" class="muted"></p>
 <label>Wachtwoord</label><input type="password" id="pw1" autocomplete="current-password">
 <div id="pw2wrap"><label>Nog een keer</label><input type="password" id="pw2" autocomplete="new-password"></div>
@@ -488,7 +489,9 @@ const act = v => v==='ja' ? '<span class="tag act">Actie</span>' : v==='nee' ? '
 const lk = (u,t='Document') => { const L = String(u||'').split(/\s+/).filter(Boolean);
   return L.map((x,i)=>{ const n = t + (L.length>1?' '+(i+1):''); return `<a class="doc" href="${esc(x)}" target="_blank" rel="noopener" title="${n}">📄<span class="dlab"> ${n}</span></a>`; }).join(''); };
 const sum = (a,f) => a.reduce((t,x)=>t+(f(x)||0),0);
-const fk = (sec,x) => { const n=(x.files||[]).length; return n ? `<button type="button" class="doc fbtn" data-fsec="${sec}" data-fid="${esc(x.id)}" title="Bestanden">📎 ${n}</button>` : (EDIT&&BEHEER ? `<button type="button" class="doc fbtn leeg" data-fsec="${sec}" data-fid="${esc(x.id)}" title="Bestand uploaden">📎 +</button>` : ''); };
+const STORAGE_AAN = false; // zet op true zodra Firebase Storage (Blaze) aan staat
+const nLinks = x => String(x.link||'').split(/\s+/).filter(Boolean).length;
+const fk = (sec,x) => { const n=(x.files||[]).length + nLinks(x); return n ? `<button type="button" class="doc fbtn" data-fsec="${sec}" data-fid="${esc(x.id)}" title="Bestanden">📎 ${n}</button>` : (EDIT&&BEHEER ? `<button type="button" class="doc fbtn leeg" data-fsec="${sec}" data-fid="${esc(x.id)}" title="Document toevoegen">📎 +</button>` : ''); };
 const sk = (sec,x) => x.samenvatting ? `<button type="button" class="doc sbtn" data-ssec="${sec}" data-sid="${esc(x.id)}" title="Samenvatting">📝<span class="dlab"> Samenvatting</span></button>` : (EDIT&&BEHEER ? `<button type="button" class="doc sbtn leeg" data-ssec="${sec}" data-sid="${esc(x.id)}" title="Samenvatting toevoegen">📝 +</button>` : '');
 const secVan = id => ['bedrijf','prive'].find(k=>D[k].some(x=>x.id===id));
 const eb = (sec,id) => `<span class="eb"><button type="button" data-edit="${sec}" data-id="${esc(id)}" title="Wijzigen">✏️</button><button type="button" data-del="${sec}" data-id="${esc(id)}" title="Verwijderen">🗑️</button></span>`;
@@ -843,19 +846,34 @@ let FCUR = null;   // {sec,id}
 const kb = n => n>=1048576 ? (n/1048576).toLocaleString('nl-NL',{maximumFractionDigits:1})+' MB' : Math.max(1,Math.round(n/1024))+' kB';
 function toonFiles(){
   const { sec, id } = FCUR; const x = D[sec].find(i=>i.id===id); if(!x){ $('dlgFiles').close(); return; }
-  $('filesTitel').textContent = '📎 ' + (x.wat||x.obj||x.tekst||x.naam||'Bestanden') + (x.loc?` – ${locName(x.loc)} · ${afdNaam(x.afd)}`:'');
-  const f = x.files||[];
-  $('filesLijst').innerHTML = f.length ? f.map((b,i)=>`<li><span class="fn">📄 ${esc(b.name)}</span><span class="fm">${kb(b.size||0)} · ${b.datum?new Date(b.datum).toLocaleDateString('nl-NL'):''}</span><button type="button" data-fopen="${i}">Openen</button>${BEHEER?`<button type="button" data-fdel="${i}" title="Verwijderen">🗑️</button>`:''}</li>`).join('') : '<li class="muted">Nog geen bestanden.</li>';
-  $('filesUp').hidden = !BEHEER;
+  $('filesTitel').textContent = '📎 Documenten – ' + (x.wat||x.obj||x.tekst||x.naam||'Bestanden') + (x.loc?` – ${locName(x.loc)} · ${afdNaam(x.afd)}`:'');
+  const f = x.files||[], L = String(x.link||'').split(/\s+/).filter(Boolean);
+  const lh = L.map((u,i)=>`<li><span class="fn">🔗 Document ${L.length>1?i+1:''}</span><span class="fm">${/drive\.google|docs\.google/.test(u)?'Google Drive':esc(u.replace(/^https?:\/\//,'').slice(0,30))}</span><a class="btn klein" href="${esc(u)}" target="_blank" rel="noopener">Openen</a>${BEHEER?`<button type="button" data-ldel="${i}">🗑️</button>`:''}</li>`).join('');
+  const fh = f.map((b,i)=>`<li><span class="fn">📄 ${esc(b.name)}</span><span class="fm">${kb(b.size||0)} · ${b.datum?new Date(b.datum).toLocaleDateString('nl-NL'):''}</span><button type="button" data-fopen="${i}">Openen</button>${BEHEER?`<button type="button" data-fdel="${i}" title="Verwijderen">🗑️</button>`:''}</li>`).join('');
+  $('filesLijst').innerHTML = (lh + fh) || '<li class="muted">Nog geen documenten. Klik op 🔗 Drive-link toevoegen.</li>';
+  $('filesUp').hidden = !BEHEER || !STORAGE_AAN;
+  $('linkAdd').hidden = !BEHEER;
 }
 document.addEventListener('click', e=>{
   const b = e.target.closest('[data-fsec]'); if(!b) return;
   e.preventDefault(); e.stopPropagation();
   FCUR = { sec:b.dataset.fsec, id:b.dataset.fid }; toonFiles(); $('dlgFiles').showModal();
 }, true);
+$('linkAdd').onclick = async () => {
+  if(!EDIT){ await $('editBtn').onclick(); if(!EDIT) return; }
+  let u = (prompt('Plak hier de link naar het document (Ctrl + V).\n\nZo krijg je de link: in Google Drive rechtsklik op het bestand → Delen → Link kopiëren.')||'').trim();
+  if(!u) return;
+  if(!/^[a-z]+:\/\//i.test(u)) u = 'https://' + u;
+  const { sec, id } = FCUR;
+  await opslaan(sec, items=>items.map(i=>i.id===id ? {...i, link:[...String(i.link||'').split(/\s+/).filter(Boolean), u].join('\n')} : i), 'Link toegevoegd');
+  toonFiles();
+};
 $('filesLijst').addEventListener('click', async e=>{
-  const o = e.target.closest('[data-fopen]'), d = e.target.closest('[data-fdel]');
+  const o = e.target.closest('[data-fopen]'), d = e.target.closest('[data-fdel]'), ld = e.target.closest('[data-ldel]');
   const x = D[FCUR.sec].find(i=>i.id===FCUR.id); if(!x) return;
+  if(ld){ const L=String(x.link||'').split(/\s+/).filter(Boolean); const n=+ld.dataset.ldel; if(!confirm(`Link ${L.length>1?n+1:''} weghalen?\n(Het document in Google Drive blijft bestaan.)`)) return;
+    await opslaan(FCUR.sec, items=>items.map(i=>i.id===FCUR.id ? {...i, link:String(i.link||'').split(/\s+/).filter(Boolean).filter((_,k)=>k!==n).join('\n')} : i), 'Link weggehaald');
+    toonFiles(); return; }
   if(o){ const f=x.files[+o.dataset.fopen]; const w=window.open('','_blank');
     try{ const u=await getDownloadURL(sRef(storage,f.path)); if(w) w.location=u; else window.location=u; }
     catch(err){ if(w) w.close(); alert(err.code==='storage/unauthorized'?'Je hebt geen toegang tot dit bestand.':'Openen mislukt: '+err.message); } }
