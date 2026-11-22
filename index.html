@@ -325,6 +325,12 @@ table.dt .grp{border-left:3px solid #6b6b6b!important}
 #dtTerug{font:inherit;font-weight:700;font-size:20px;line-height:1;padding:6px 14px;border:2px solid var(--green);border-radius:8px;background:var(--mint);color:var(--ink);cursor:pointer}
 #dtTerug:disabled{opacity:.35;cursor:default}
 #filesLijst a.btn.klein{text-decoration:none;padding:4px 10px}
+.wl .wlk{display:flex;gap:6px;margin-left:auto;flex-shrink:0}
+.wl .slot{width:116px;display:flex;justify-content:flex-end}
+.wl .slot > *{margin:0!important;width:100%;justify-content:center;gap:5px}
+button.fbtn.dkn{background:var(--blue)}
+button.fbtn.dkn.leeg{background:#fff;color:var(--blue);border:1px dashed var(--blue)}
+@media (max-width:700px){ .wl .slot{width:auto} .wl .slot > *{width:auto} }
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -335,7 +341,7 @@ table.dt .grp{border-left:3px solid #6b6b6b!important}
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.65</span>
+  <span class="versie" title="Versie">v1.67</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="histBtn" hidden title="Wie heeft wat gewijzigd">🕘 Geschiedenis</button>
@@ -444,7 +450,7 @@ table.dt .grp{border-left:3px solid #6b6b6b!important}
 <div id="shWrap"><div id="sheet"></div></div><div id="shInfo" class="muted"></div></dialog>
 <dialog id="dlgInfo" class="breed"><form method="dialog"><h2 id="infoTitel"></h2><div id="infoInhoud" class="tw"></div><div class="knoppen"><span id="infoKnop" class="schakel" style="float:none"><button type="button" data-m="afd">Per afdeling</button><button type="button" data-m="obj">Per object</button></span><button type="button" class="btn klein" id="infoOpen">▼ Alles open</button><button type="button" class="btn klein" id="infoDicht">▶ Alles dicht</button><button type="button" class="btn add" id="infoAdd" hidden>+ Object toevoegen</button><span style="flex:1"></span><button class="btn blue">Sluiten</button></div></form></dialog>
 <dialog id="dlgFiles"><form method="dialog"><h2 id="filesTitel">Bestanden</h2><ul id="filesLijst" class="flijst"></ul>
-<div class="knoppen"><button type="button" class="btn add" id="linkAdd">🔗 Drive-link toevoegen</button><label class="btn add" id="filesUp">⬆ Bestand uploaden<input type="file" id="filesInput" multiple hidden></label><span style="flex:1"></span><button class="btn blue">Sluiten</button></div></form></dialog>
+<div class="knoppen"><button type="button" class="btn" id="linkAdd" style="background:var(--green);color:#fff">🔗 Drive-link toevoegen</button><label class="btn add" id="filesUp">⬆ Bestand uploaden<input type="file" id="filesInput" multiple hidden></label><span style="flex:1"></span><button class="btn blue">Sluiten</button></div></form></dialog>
 <dialog id="dlgPw"><form id="frmPw" method="dialog"><h2 id="pwTitel">🔒 Privé</h2><p id="pwTekst" class="muted"></p>
 <label>Wachtwoord</label><input type="password" id="pw1" autocomplete="current-password">
 <div id="pw2wrap"><label>Nog een keer</label><input type="password" id="pw2" autocomplete="new-password"></div>
@@ -491,6 +497,11 @@ const lk = (u,t='Document') => { const L = String(u||'').split(/\s+/).filter(Boo
 const sum = (a,f) => a.reduce((t,x)=>t+(f(x)||0),0);
 const STORAGE_AAN = false; // zet op true zodra Firebase Storage (Blaze) aan staat
 const nLinks = x => String(x.link||'').split(/\s+/).filter(Boolean).length;
+// één nette knop per regel voor documenten + vaste plek voor samenvatting
+const dk = (sec,x) => { const n=(x.files||[]).length + nLinks(x);
+  if(!n) return EDIT&&BEHEER ? `<button type="button" class="doc fbtn dkn leeg" data-fsec="${sec}" data-fid="${esc(x.id)}" title="Document toevoegen">📄 +</button>` : '';
+  return `<button type="button" class="doc fbtn dkn" data-fsec="${sec}" data-fid="${esc(x.id)}" title="Documenten bekijken / toevoegen">📄<span class="dlab"> ${n===1?'Document':n+' documenten'}</span></button>`; };
+const knoppen = (sec,x) => { const a=sk(sec,x), b=dk(sec,x); return `<span class="wlk">${a?`<span class="slot">${a}</span>`:''}<span class="slot">${b}</span></span>`; };
 const fk = (sec,x) => { const n=(x.files||[]).length + nLinks(x); return n ? `<button type="button" class="doc fbtn" data-fsec="${sec}" data-fid="${esc(x.id)}" title="Bestanden">📎 ${n}</button>` : (EDIT&&BEHEER ? `<button type="button" class="doc fbtn leeg" data-fsec="${sec}" data-fid="${esc(x.id)}" title="Document toevoegen">📎 +</button>` : ''); };
 const sk = (sec,x) => x.samenvatting ? `<button type="button" class="doc sbtn" data-ssec="${sec}" data-sid="${esc(x.id)}" title="Samenvatting">📝<span class="dlab"> Samenvatting</span></button>` : (EDIT&&BEHEER ? `<button type="button" class="doc sbtn leeg" data-ssec="${sec}" data-sid="${esc(x.id)}" title="Samenvatting toevoegen">📝 +</button>` : '');
 const secVan = id => ['bedrijf','prive'].find(k=>D[k].some(x=>x.id===id));
@@ -539,7 +550,7 @@ function render(){
   const byMij={}; alle.forEach(x=>{ if(x.premie){const k=x.mij||'Onbekend'; byMij[k]=(byMij[k]||0)+x.premie;} }); bars('barsMij',byMij);
   const byLoc={}; D.bez.forEach(x=>{ const k=locName(x.loc||'?'); byLoc[k]=(byLoc[k]||0)+(x.waarde||0); }); bars('barsLoc',byLoc);
   $('actie').innerHTML = '<thead><tr><th>Wat</th><th>Categorie</th><th>Maatschappij</th><th>Polisnummer</th><th class="r">Premie</th></tr></thead><tbody>' +
-    alle.filter(x=>x.actie==='ja').map(x=>`<tr><td><div class="wl"><span>${esc(x.wat)}</span>${lk(x.link)}${sk(secVan(x.id),x)}${fk(secVan(x.id),x)}</div></td><td>${esc(x.cat)}</td><td>${esc(x.mij)}</td><td>${esc(x.polis)}</td><td class="r">${eur(x.premie)}</td></tr>`).join('') + '</tbody>';
+    alle.filter(x=>x.actie==='ja').map(x=>`<tr><td><div class="wl"><span>${esc(x.wat)}</span>${knoppen(secVan(x.id),x)}</div></td><td>${esc(x.cat)}</td><td>${esc(x.mij)}</td><td>${esc(x.polis)}</td><td class="r">${eur(x.premie)}</td></tr>`).join('') + '</tbody>';
 
   fillSelect('fB', [...new Set(D.bedrijf.map(x=>x.cat).filter(Boolean))].sort());
   fillSelect('mB', [...new Set(D.bedrijf.map(x=>x.mij).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'nl')));
@@ -566,7 +577,7 @@ function drawPolis(id, sec, q, extra){
   const r = D[sec].filter(x=>(!t || [x.wat,x.mij,x.polis,x.cat,x.opm].join(' ').toLowerCase().includes(t)) && (!extra || extra(x)));
   r.sort((a,b)=>{const A=a[st.key]??'',B=b[st.key]??''; return (typeof A==='number'&&typeof B==='number'?A-B:String(A).localeCompare(String(B),'nl',{numeric:true}))*st.dir;});
   $(id).innerHTML = '<thead><tr>'+cols.map(c=>`<th class="${c[2]||''}" data-k="${c[0]}">${c[1]}${st.key===c[0]?(st.dir>0?' ▲':' ▼'):''}</th>`).join('')+(EDIT?'<th></th>':'')+'</tr></thead><tbody>'+
-    r.map(x=>`<tr><td class="muted">${esc(x.nr)}</td><td><div class="wl"><span>${esc(x.wat)}</span>${lk(x.link)}${sk(sec,x)}${fk(sec,x)}</div></td><td>${sec==='bedrijf'&&x.cat?`<span class="fklik${$('fB').value===x.cat?' fon':''}" data-fsel="fB" data-fval="${esc(x.cat)}" title="Klik: alleen deze categorie">${esc(x.cat)}</span>`:esc(x.cat)}</td><td>${x.mij?`<span class="fklik${$(FS.m).value===x.mij?' fon':''}" data-fsel="${FS.m}" data-fval="${esc(x.mij)}" title="Klik: alleen deze maatschappij">${esc(x.mij)}</span>${heeftContact(x.mij)?` <a class="mij" data-mij="${esc(x.mij)}" title="Contactgegevens">📇</a>`:''}`:mijLink(x.mij)}</td><td>${esc(x.polis)}</td><td>${tag(x.verz)}</td><td><span class="fklik2${$(FS.a).value===(x.actie||'-')?' fon':''}" data-fsel="${FS.a}" data-fval="${x.actie||'-'}" title="Klik: alleen deze">${act(x.actie)}</span></td><td class="r">${eur(x.premie)}</td><td class="muted">${esc(x.opm)}</td>${EDIT?`<td>${eb(sec,x.id)}</td>`:''}</tr>`).join('')+
+    r.map(x=>`<tr><td class="muted">${esc(x.nr)}</td><td><div class="wl"><span>${esc(x.wat)}</span>${knoppen(sec,x)}</div></td><td>${sec==='bedrijf'&&x.cat?`<span class="fklik${$('fB').value===x.cat?' fon':''}" data-fsel="fB" data-fval="${esc(x.cat)}" title="Klik: alleen deze categorie">${esc(x.cat)}</span>`:esc(x.cat)}</td><td>${x.mij?`<span class="fklik${$(FS.m).value===x.mij?' fon':''}" data-fsel="${FS.m}" data-fval="${esc(x.mij)}" title="Klik: alleen deze maatschappij">${esc(x.mij)}</span>${heeftContact(x.mij)?` <a class="mij" data-mij="${esc(x.mij)}" title="Contactgegevens">📇</a>`:''}`:mijLink(x.mij)}</td><td>${esc(x.polis)}</td><td>${tag(x.verz)}</td><td><span class="fklik2${$(FS.a).value===(x.actie||'-')?' fon':''}" data-fsel="${FS.a}" data-fval="${x.actie||'-'}" title="Klik: alleen deze">${act(x.actie)}</span></td><td class="r">${eur(x.premie)}</td><td class="muted">${esc(x.opm)}</td>${EDIT?`<td>${eb(sec,x.id)}</td>`:''}</tr>`).join('')+
     `</tbody><tfoot><tr><td colspan="7">Totaal (${r.length} regels)</td><td class="r">${eur(sum(r,x=>x.premie))}</td><td${EDIT?' colspan="2"':''}></td></tr></tfoot>`;
   $(id).querySelectorAll('th[data-k]').forEach(th=>th.onclick=()=>{ if(st.key===th.dataset.k) st.dir=-st.dir; else {st.key=th.dataset.k;st.dir=1;} drawPolis(id,sec,q,extra); });
   $(q).oninput = () => drawPolis(id,sec,q,extra);
