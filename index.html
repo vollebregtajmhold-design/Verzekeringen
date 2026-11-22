@@ -331,6 +331,10 @@ table.dt .grp{border-left:3px solid #6b6b6b!important}
 button.fbtn.dkn{background:var(--blue)}
 button.fbtn.dkn.leeg{background:#fff;color:var(--blue);border:1px dashed var(--blue)}
 @media (max-width:700px){ .wl .slot{width:auto} .wl .slot > *{width:auto} }
+#lnkForm{border:1px solid #ccc;border-radius:8px;padding:10px 12px;margin:8px 0;background:#fff}
+#lnkForm .lnkrij{display:flex;gap:10px}#lnkForm .lnkrij > div{flex:1}
+#lnkForm .lnkknop{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+#samDatumRij{display:flex;align-items:center;gap:8px;margin:8px 0 0}#samDatumRij input{width:auto}
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -341,7 +345,7 @@ button.fbtn.dkn.leeg{background:#fff;color:var(--blue);border:1px dashed var(--b
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.67</span>
+  <span class="versie" title="Versie">v1.68</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="histBtn" hidden title="Wie heeft wat gewijzigd">🕘 Geschiedenis</button>
@@ -450,6 +454,7 @@ button.fbtn.dkn.leeg{background:#fff;color:var(--blue);border:1px dashed var(--b
 <div id="shWrap"><div id="sheet"></div></div><div id="shInfo" class="muted"></div></dialog>
 <dialog id="dlgInfo" class="breed"><form method="dialog"><h2 id="infoTitel"></h2><div id="infoInhoud" class="tw"></div><div class="knoppen"><span id="infoKnop" class="schakel" style="float:none"><button type="button" data-m="afd">Per afdeling</button><button type="button" data-m="obj">Per object</button></span><button type="button" class="btn klein" id="infoOpen">▼ Alles open</button><button type="button" class="btn klein" id="infoDicht">▶ Alles dicht</button><button type="button" class="btn add" id="infoAdd" hidden>+ Object toevoegen</button><span style="flex:1"></span><button class="btn blue">Sluiten</button></div></form></dialog>
 <dialog id="dlgFiles"><form method="dialog"><h2 id="filesTitel">Bestanden</h2><ul id="filesLijst" class="flijst"></ul>
+<div id="lnkForm" class="lnkform" hidden><label>Link (Google Drive)</label><input id="lnkUrl" placeholder="Plak hier de link (Ctrl + V)"><div class="lnkrij"><div><label>Naam</label><input id="lnkNaam" placeholder="bijv. Polisblad"></div><div><label>Datum</label><input id="lnkDatum" type="date"></div></div><div class="lnkknop"><button type="button" class="btn" id="lnkAnn">Annuleren</button><button type="button" class="btn blue" id="lnkOk">Opslaan</button></div></div>
 <div class="knoppen"><button type="button" class="btn" id="linkAdd" style="background:var(--green);color:#fff">🔗 Drive-link toevoegen</button><label class="btn add" id="filesUp">⬆ Bestand uploaden<input type="file" id="filesInput" multiple hidden></label><span style="flex:1"></span><button class="btn blue">Sluiten</button></div></form></dialog>
 <dialog id="dlgPw"><form id="frmPw" method="dialog"><h2 id="pwTitel">🔒 Privé</h2><p id="pwTekst" class="muted"></p>
 <label>Wachtwoord</label><input type="password" id="pw1" autocomplete="current-password">
@@ -464,7 +469,7 @@ button.fbtn.dkn.leeg{background:#fff;color:var(--blue);border:1px dashed var(--b
 <div class="knoppen"><span class="muted" style="flex:1">De laatste 400 wijzigingen worden bewaard.</span><button class="btn blue">Sluiten</button></div></form></dialog>
 <dialog id="dlgSam" class="breed"><form method="dialog"><h2 id="samTitel">📝 Samenvatting</h2>
 <div id="samTekst" class="samtekst"></div>
-<div id="samEdit" hidden><label style="display:block;font-weight:700;font-size:13px;margin:4px 0">Plak of typ hier de samenvatting</label><textarea id="samInvoer" placeholder="Tip: kopjes met # , opsommingen met - , vet met **tekst**"></textarea></div>
+<div id="samEdit" hidden><label style="display:block;font-weight:700;font-size:13px;margin:4px 0">Plak of typ hier de samenvatting</label><textarea id="samInvoer" placeholder="Tip: kopjes met # , opsommingen met - , vet met **tekst**"></textarea><div id="samDatumRij"><label for="samDoc" style="margin:0">Datum van het document (polisblad)</label><input type="date" id="samDoc"></div></div>
 <div class="knoppen"><span class="muted" id="samInfo" style="flex:1;font-size:12px"></span><button type="button" class="btn" id="samWijzig" hidden>✏️ Wijzigen</button><button type="button" class="btn blue" id="samBewaar" hidden>Opslaan</button><button type="button" class="btn" onclick="this.closest('dialog').close()">Sluiten</button></div></form></dialog>
 <div id="toast" hidden></div>
 
@@ -492,11 +497,17 @@ const nf = n => n==null ? '' : n.toLocaleString('nl-NL',{maximumFractionDigits:2
 const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const tag = v => v==='ja' ? '<span class="tag ja">Ja</span>' : v==='nee' ? '<span class="tag nee">Nee</span>' : '<span class="muted">–</span>';
 const act = v => v==='ja' ? '<span class="tag act">Actie</span>' : v==='nee' ? '<span class="muted">Nee</span>' : '<span class="muted">–</span>';
-const lk = (u,t='Document') => { const L = String(u||'').split(/\s+/).filter(Boolean);
-  return L.map((x,i)=>{ const n = t + (L.length>1?' '+(i+1):''); return `<a class="doc" href="${esc(x)}" target="_blank" rel="noopener" title="${n}">📄<span class="dlab"> ${n}</span></a>`; }).join(''); };
+const linksVan = v => String(v||'').split('\n').flatMap(r=>{ r=r.trim(); if(!r) return [];
+  const p=r.split(' | '); if(p.length>1) { const url=p.pop().trim(); return [{naam:(p[0]||'').trim(), datum:(p[1]||'').trim(), url}]; }
+  return r.split(/\s+/).filter(Boolean).map(url=>({naam:'', datum:'', url})); });
+const linksStr = L => L.map(o=>(o.naam||o.datum) ? `${o.naam||'Document'} | ${o.datum||''} | ${o.url}` : o.url).join('\n');
+const nlDatum = d => /^\d{4}-\d{2}-\d{2}$/.test(d||'') ? d.split('-').reverse().join('-') : (d||'');
+const linkNaam = (o,i,n) => (o.naam || ('Document'+(n>1?' '+(i+1):''))) + (o.datum?' ('+nlDatum(o.datum)+')':'');
+const lk = (u,t='Document') => { const L = linksVan(u);
+  return L.map((o,i)=>{ const n = o.naam ? linkNaam(o,i,L.length) : t + (L.length>1?' '+(i+1):''); return `<a class="doc" href="${esc(o.url)}" target="_blank" rel="noopener" title="${esc(n)}">📄<span class="dlab"> ${esc(n)}</span></a>`; }).join(''); };
 const sum = (a,f) => a.reduce((t,x)=>t+(f(x)||0),0);
 const STORAGE_AAN = false; // zet op true zodra Firebase Storage (Blaze) aan staat
-const nLinks = x => String(x.link||'').split(/\s+/).filter(Boolean).length;
+const nLinks = x => linksVan(x.link).length;
 // één nette knop per regel voor documenten + vaste plek voor samenvatting
 const dk = (sec,x) => { const n=(x.files||[]).length + nLinks(x);
   if(!n) return EDIT&&BEHEER ? `<button type="button" class="doc fbtn dkn leeg" data-fsec="${sec}" data-fid="${esc(x.id)}" title="Document toevoegen">📄 +</button>` : '';
@@ -858,8 +869,8 @@ const kb = n => n>=1048576 ? (n/1048576).toLocaleString('nl-NL',{maximumFraction
 function toonFiles(){
   const { sec, id } = FCUR; const x = D[sec].find(i=>i.id===id); if(!x){ $('dlgFiles').close(); return; }
   $('filesTitel').textContent = '📎 Documenten – ' + (x.wat||x.obj||x.tekst||x.naam||'Bestanden') + (x.loc?` – ${locName(x.loc)} · ${afdNaam(x.afd)}`:'');
-  const f = x.files||[], L = String(x.link||'').split(/\s+/).filter(Boolean);
-  const lh = L.map((u,i)=>`<li><span class="fn">🔗 Document ${L.length>1?i+1:''}</span><span class="fm">${/drive\.google|docs\.google/.test(u)?'Google Drive':esc(u.replace(/^https?:\/\//,'').slice(0,30))}</span><a class="btn klein" href="${esc(u)}" target="_blank" rel="noopener">Openen</a>${BEHEER?`<button type="button" data-ldel="${i}">🗑️</button>`:''}</li>`).join('');
+  const f = x.files||[], L = linksVan(x.link);
+  const lh = L.map((o,i)=>`<li><span class="fn">🔗 ${esc(o.naam||('Document'+(L.length>1?' '+(i+1):'')))}</span><span class="fm">${o.datum?nlDatum(o.datum):(/drive\.google|docs\.google/.test(o.url)?'Google Drive':'')}</span><a class="btn klein" href="${esc(o.url)}" target="_blank" rel="noopener">Openen</a>${BEHEER?`<button type="button" data-ledit="${i}" title="Naam / datum wijzigen">✏️</button><button type="button" data-ldel="${i}" title="Weghalen">🗑️</button>`:''}</li>`).join('');
   const fh = f.map((b,i)=>`<li><span class="fn">📄 ${esc(b.name)}</span><span class="fm">${kb(b.size||0)} · ${b.datum?new Date(b.datum).toLocaleDateString('nl-NL'):''}</span><button type="button" data-fopen="${i}">Openen</button>${BEHEER?`<button type="button" data-fdel="${i}" title="Verwijderen">🗑️</button>`:''}</li>`).join('');
   $('filesLijst').innerHTML = (lh + fh) || '<li class="muted">Nog geen documenten. Klik op 🔗 Drive-link toevoegen.</li>';
   $('filesUp').hidden = !BEHEER || !STORAGE_AAN;
@@ -868,22 +879,31 @@ function toonFiles(){
 document.addEventListener('click', e=>{
   const b = e.target.closest('[data-fsec]'); if(!b) return;
   e.preventDefault(); e.stopPropagation();
-  FCUR = { sec:b.dataset.fsec, id:b.dataset.fid }; toonFiles(); $('dlgFiles').showModal();
+  FCUR = { sec:b.dataset.fsec, id:b.dataset.fid }; $('lnkForm').hidden = true; toonFiles(); $('dlgFiles').showModal();
 }, true);
-$('linkAdd').onclick = async () => {
-  if(!EDIT){ await $('editBtn').onclick(); if(!EDIT) return; }
-  let u = (prompt('Plak hier de link naar het document (Ctrl + V).\n\nZo krijg je de link: in Google Drive rechtsklik op het bestand → Delen → Link kopiëren.')||'').trim();
-  if(!u) return;
+let LEDIT = -1; // -1 = nieuw
+function lnkOpen(i){
+  const x = D[FCUR.sec].find(z=>z.id===FCUR.id); const L = linksVan(x?.link); LEDIT = i;
+  const o = i>=0 ? L[i] : {naam:'', datum:'', url:''};
+  $('lnkUrl').value = o.url; $('lnkNaam').value = o.naam; $('lnkDatum').value = /^\d{4}-\d{2}-\d{2}$/.test(o.datum)?o.datum:'';
+  $('lnkForm').hidden = false; $('linkAdd').hidden = true; setTimeout(()=>(i>=0?$('lnkNaam'):$('lnkUrl')).focus(),30);
+}
+$('linkAdd').onclick = async () => { if(!EDIT){ await $('editBtn').onclick(); if(!EDIT) return; } lnkOpen(-1); };
+$('lnkAnn').onclick = () => { $('lnkForm').hidden = true; $('linkAdd').hidden = !BEHEER; };
+$('lnkOk').onclick = async () => {
+  let u = $('lnkUrl').value.trim(); if(!u){ alert('Plak eerst de link.'); $('lnkUrl').focus(); return; }
   if(!/^[a-z]+:\/\//i.test(u)) u = 'https://' + u;
-  const { sec, id } = FCUR;
-  await opslaan(sec, items=>items.map(i=>i.id===id ? {...i, link:[...String(i.link||'').split(/\s+/).filter(Boolean), u].join('\n')} : i), 'Link toegevoegd');
-  toonFiles();
+  const o = { naam:$('lnkNaam').value.trim().replace(/\|/g,'/'), datum:$('lnkDatum').value, url:u };
+  const { sec, id } = FCUR, k = LEDIT;
+  await opslaan(sec, items=>items.map(i=>{ if(i.id!==id) return i; const L=linksVan(i.link); if(k>=0 && L[k]) L[k]=o; else L.push(o); return {...i, link:linksStr(L)}; }), k>=0?'Document gewijzigd':'Document toegevoegd');
+  $('lnkForm').hidden = true; toonFiles();
 };
 $('filesLijst').addEventListener('click', async e=>{
-  const o = e.target.closest('[data-fopen]'), d = e.target.closest('[data-fdel]'), ld = e.target.closest('[data-ldel]');
+  const o = e.target.closest('[data-fopen]'), d = e.target.closest('[data-fdel]'), ld = e.target.closest('[data-ldel]'), le = e.target.closest('[data-ledit]');
   const x = D[FCUR.sec].find(i=>i.id===FCUR.id); if(!x) return;
-  if(ld){ const L=String(x.link||'').split(/\s+/).filter(Boolean); const n=+ld.dataset.ldel; if(!confirm(`Link ${L.length>1?n+1:''} weghalen?\n(Het document in Google Drive blijft bestaan.)`)) return;
-    await opslaan(FCUR.sec, items=>items.map(i=>i.id===FCUR.id ? {...i, link:String(i.link||'').split(/\s+/).filter(Boolean).filter((_,k)=>k!==n).join('\n')} : i), 'Link weggehaald');
+  if(le){ if(!EDIT){ await $('editBtn').onclick(); if(!EDIT) return; } lnkOpen(+le.dataset.ledit); return; }
+  if(ld){ const L=linksVan(x.link); const n=+ld.dataset.ldel; if(!confirm(`"${linkNaam(L[n],n,L.length)}" weghalen?\n(Het document in Google Drive blijft bestaan.)`)) return;
+    await opslaan(FCUR.sec, items=>items.map(i=>i.id===FCUR.id ? {...i, link:linksStr(linksVan(i.link).filter((_,k)=>k!==n))} : i), 'Link weggehaald');
     toonFiles(); return; }
   if(o){ const f=x.files[+o.dataset.fopen]; const w=window.open('','_blank');
     try{ const u=await getDownloadURL(sRef(storage,f.path)); if(w) w.location=u; else window.location=u; }
@@ -1377,10 +1397,11 @@ function toonSam(bewerk){
   const x = D[SCUR.sec].find(i=>i.id===SCUR.id); if(!x) return;
   $('samTitel').textContent = '📝 ' + (x.wat||x.obj||x.tekst||'Samenvatting');
   $('samTekst').innerHTML = mdLite(x.samenvatting);
-  $('samInfo').textContent = x.samDatum ? `Laatst bijgewerkt: ${new Date(x.samDatum).toLocaleDateString('nl-NL')}${x.samDoor?' door '+x.samDoor:''}` : '';
+  $('samInfo').textContent = [x.samDoc ? `📅 Document van ${nlDatum(x.samDoc)}` : '', x.samDatum ? `bijgewerkt ${new Date(x.samDatum).toLocaleDateString('nl-NL')}${x.samDoor?' door '+x.samDoor:''}` : ''].filter(Boolean).join(' · ');
+  $('samTitel').textContent += x.samDoc ? ` (${nlDatum(x.samDoc)})` : '';
   $('samTekst').hidden = !!bewerk; $('samEdit').hidden = !bewerk;
   $('samWijzig').hidden = !!bewerk || !BEHEER; $('samBewaar').hidden = !bewerk;
-  if(bewerk){ $('samInvoer').value = x.samenvatting||''; setTimeout(()=>$('samInvoer').focus(),50); }
+  if(bewerk){ $('samInvoer').value = x.samenvatting||''; $('samDoc').value = x.samDoc||''; setTimeout(()=>$('samInvoer').focus(),50); }
 }
 document.addEventListener('click', e=>{
   const b = e.target.closest('[data-ssec]'); if(!b) return;
@@ -1392,7 +1413,7 @@ document.addEventListener('click', e=>{
 $('samWijzig').onclick = async () => { if(!EDIT){ const w = await kiesWie(); if(!w) return; } toonSam(true); };
 $('samBewaar').onclick = async () => {
   const t = $('samInvoer').value.trim();
-  await opslaan(SCUR.sec, items=>items.map(i=>{ if(i.id!==SCUR.id) return i; const y={...i}; if(t){ y.samenvatting=t; y.samDatum=new Date().toISOString(); y.samDoor=wieNaam(); } else { delete y.samenvatting; delete y.samDatum; delete y.samDoor; } return y; }), t?'Samenvatting opgeslagen':'Samenvatting verwijderd');
+  await opslaan(SCUR.sec, items=>items.map(i=>{ if(i.id!==SCUR.id) return i; const y={...i}; if(t){ y.samenvatting=t; y.samDatum=new Date().toISOString(); y.samDoor=wieNaam(); if($('samDoc').value) y.samDoc=$('samDoc').value; else delete y.samDoc; } else { delete y.samenvatting; delete y.samDatum; delete y.samDoc; delete y.samDoor; } return y; }), t?'Samenvatting opgeslagen':'Samenvatting verwijderd');
   toonSam(false);
 };
 
@@ -1656,7 +1677,7 @@ function openForm(sec, id, preset){
     const r = req?' required':'';
     if(t==='jn') return `<label>${l}</label><select name="${k}"><option value="">–</option><option value="ja"${v==='ja'?' selected':''}>Ja</option><option value="nee"${v==='nee'?' selected':''}>Nee</option></select>`;
     if(t==='area') return `<label>${l}</label><textarea name="${k}">${esc(v)}</textarea>`;
-    if(t==='url') return `<label>${l} <span class="muted" style="font-weight:normal">– meer links? Zet elke link op een nieuwe regel</span></label><textarea name="${k}" rows="${Math.max(2,String(v||'').split(/\s+/).filter(Boolean).length+1)}" placeholder="Plak hier de link (https://drive.google.com/…)" style="white-space:pre;overflow-x:auto">${esc(String(v||'').split(/\s+/).filter(Boolean).join('\n'))}</textarea>`;
+    if(t==='url') return `<label>${l} <span class="muted" style="font-weight:normal">– meer links? Zet elke link op een nieuwe regel</span></label><textarea name="${k}" rows="${Math.max(2,linksVan(v).length+1)}" placeholder="Plak hier de link (https://drive.google.com/…)" style="white-space:pre;overflow-x:auto">${esc(linksStr(linksVan(v)))}</textarea>`;
     if(t==='list'){ const opts=[...new Set(D[sec].map(x=>x[k]).filter(Boolean))].sort(); return `<label>${l}</label><input name="${k}" list="dl_${k}" value="${esc(v)}"${r}><datalist id="dl_${k}">${opts.map(o=>`<option value="${esc(o)}">`).join('')}</datalist>`; }
     if(t==='num') return `<label>${l}</label><input name="${k}" inputmode="decimal" pattern="-?[0-9.]*[,.]?[0-9]*" value="${v==null?'':String(v).replace('.',',')}"${r}>`;
     return `<label>${l}</label><input name="${k}" type="${t}" value="${esc(v)}"${r}>`;
@@ -1668,7 +1689,7 @@ function openForm(sec, id, preset){
     for(const [k,,t='text'] of FIELDS[sec]){
       let v = (f.get(k)||'').toString().trim();
       if(t==='num'){ v = v.replace(/\s/g,''); if(v.includes(',')) v = v.replace(/\./g,'').replace(',','.'); v = v==='' || isNaN(Number(v)) ? null : Number(v); }
-      if(t==='url') v = v.split(/\s+/).filter(Boolean).map(x=>/^[a-z]+:\/\//i.test(x)?x:'https://'+x).join('\n');
+      if(t==='url') v = linksStr(linksVan(v).map(o=>({...o, url:/^[a-z]+:\/\//i.test(o.url)?o.url:'https://'+o.url})));
       if(k==='punten') v = v.split('\n').map(x=>x.trim()).filter(Boolean).map(x=>{const [a,...b]=x.split('|'); return {tekst:a.trim(), extra:b.join('|').trim()};});
       nieuw[k] = v;
     }
