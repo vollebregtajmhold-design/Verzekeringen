@@ -315,6 +315,12 @@ body:not(.beheer) #sheetBtn{display:none}
 #shInfo{font-size:13px;margin-top:6px}
 #shWrap .jexcel > thead > tr > td{cursor:pointer}
 #shWrap .jexcel > thead > tr > td:hover{background:#cfdcf7}
+.dt td.soortc{position:relative;padding-bottom:18px!important;vertical-align:top}
+.dt .stip{position:absolute;left:5px;bottom:3px;width:13px;height:13px;border-radius:50%;border:0;padding:0;background:#2e9e4f;cursor:pointer;color:#fff;font-size:12px;line-height:13px;text-align:center;font-weight:700}
+.dt .stip:hover{transform:scale(1.25)}
+.dt .stip.aan{background:#1a5fd0;width:16px;height:16px;line-height:15px}
+#dtOpen,#dtDicht{display:none!important}
+.dt th.locc{position:relative;padding-bottom:18px!important}
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -325,7 +331,7 @@ body:not(.beheer) #sheetBtn{display:none}
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.51</span>
+  <span class="versie" title="Versie">v1.53</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="histBtn" hidden title="Wie heeft wat gewijzigd">🕘 Geschiedenis</button>
@@ -410,8 +416,6 @@ body:not(.beheer) #sheetBtn{display:none}
       <h2>Kassen <span style="float:right"><button type="button" class="btn klein" id="sheetBtn" title="Invullen zoals in Excel: kopiëren, plakken en slepen">📋 Spreadsheet</button> <button type="button" class="btn klein" id="docBtn" title="Maak een overzicht zoals de polis, om af te drukken of als PDF te bewaren">📄 Polisdocument</button> <button type="button" class="btn klein" id="dtPrint">🖨 Afdrukken / PDF</button> <button type="button" class="btn klein" id="dtStd">↺ Standaard</button></span></h2>
       <div class="dtbar">
         <div class="dtpick"><div class="dtlab">Jaar</div><button type="button" class="dtbtn jaarbtn" data-zone="jaar"><span class="dtsel"></span> ▾</button><div class="dtpop" data-zone="jaar" hidden></div></div>
-        <div class="dtpick"><div class="dtlab">Groeperen (rijen)</div><button type="button" class="dtbtn" data-zone="rij"><span class="dtsel"></span> ▾</button><div class="dtpop" data-zone="rij" hidden></div></div>
-        <div class="dtpick"><div class="dtlab">Kolommen</div><button type="button" class="dtbtn" data-zone="kol"><span class="dtsel"></span> ▾</button><div class="dtpop" data-zone="kol" hidden></div></div>
         <div class="dtpick"><div class="dtlab">Waarden</div><button type="button" class="dtbtn" data-zone="val"><span class="dtsel"></span> ▾</button><div class="dtpop" data-zone="val" hidden></div></div>
         <div class="dtpick"><div class="dtlab">Filter</div><button type="button" class="dtbtn" data-zone="filt"><span class="dtsel"></span> ▾</button><div class="dtpop breedpop" data-zone="filt" hidden></div></div>
         <div class="dtpick"><div class="dtlab">Weergaven</div><button type="button" class="dtbtn" data-zone="view"><span class="dtsel"></span> ▾</button><div class="dtpop" data-zone="view" hidden></div></div>
@@ -1000,7 +1004,7 @@ $('histInhoud').addEventListener('click', async e=>{
 const jaarVan = x => String(x.jaar??'').trim() || 'Geen jaar';
 const heeftJaren = () => D.bez.some(x=>String(x.jaar??'').trim());
 const jaren = () => [...new Set(D.bez.map(jaarVan))].sort((a,b)=>b.localeCompare(a,'nl',{numeric:true}));
-const jaarNaast = () => DT.kol.includes('jaar') || DT.rij.includes('jaar');
+const jaarNaast = () => DT.kol.includes('jaar');
 const dtJaar = () => { if(!heeftJaren()) return 'alle'; const J=jaren(); return DT.jaar==='alle' || J.includes(DT.jaar) ? DT.jaar : J[0]; };
 const dtJaarOk = x => { const j=dtJaar(); return j==='alle' || jaarNaast() || jaarVan(x)===j; };
 const DT_VELDEN = {
@@ -1049,27 +1053,34 @@ let DTCELL = [];
 const DT_FVELDEN = ['jaar','loc','afd','sub','eenh','dekking'];
 const dtFiltOk = x => dtJaarOk(x) && (!DT.filt || Object.entries(DT.filt).filter(([k])=>DT_VELDEN[k]).every(([k,uit])=>!uit.length || !uit.includes(DT_VELDEN[k].g(x))));
 const dtZoekOk = x => { const t=$('dtZoek').value.toLowerCase(); return !t || [x.obj,x.sub,x.opm,locName(x.loc||''),afdNaam(x.afd)].join(' ').toLowerCase().includes(t); };
+let DTFOCUS = null, LFOCUS = null;
 function drawDT(){
   if(!D) return;
   dtKnoppen();
   const t = $('dtZoek').value.toLowerCase();
-  const r = D.bez.filter(x=>dtZoekOk(x) && dtFiltOk(x));
+  const r0 = D.bez.filter(x=>dtZoekOk(x) && dtFiltOk(x));
+  if(DTFOCUS!=null && !r0.some(x=>DT_VELDEN.sub.g(x)===DTFOCUS)) DTFOCUS = null;
+  let r = DTFOCUS==null ? r0 : r0.filter(x=>DT_VELDEN.sub.g(x)===DTFOCUS);
+  const JN = jaarNaast();
+  if(JN) LFOCUS = null;
+  if(LFOCUS!=null && !r.some(x=>DT_VELDEN.loc.g(x)===LFOCUS)) LFOCUS = null;
+  if(LFOCUS!=null) r = r.filter(x=>DT_VELDEN.loc.g(x)===LFOCUS);
+  const LFOC = LFOCUS!=null;
+  const KOL = JN ? ['jaar'] : LFOC ? ['loc','afd'] : ['loc'];
   const M = DT.val.length ? DT.val : [{m:'waarde',a:'som'}];
   DTCELL = [];
   const cel = (items, m, filt, titel, cls='') => { const n=dtAgg(items,m); if(n==null||(!items.length)) return `<td class="nul ${cls}">–</td>`; DTCELL.push({filt, titel}); return `<td class="r klik ${cls}" data-dtc="${DTCELL.length-1}">${m.m==='aantal'&&m.a!=='tel' ? dtEenh(items,m) : dtFmt(n,m)}</td>`; };
-  const ck = x => DT.kol.map(k=>DT_VELDEN[k].g(x));
+  const ck = x => KOL.map(k=>DT_VELDEN[k].g(x));
   const keys = []; const seen=new Set();
   r.forEach(x=>{ const k=ck(x), s=JSON.stringify(k); if(!seen.has(s)){ seen.add(s); keys.push(k); } });
-  keys.sort((a,b)=>{ for(let i=0;i<a.length;i++){ const c=dtSort(DT.kol[i])(a[i],b[i]); if(c) return c; } return 0; });
-  if(!DT.kol.length) keys.length = 0;
+  keys.sort((a,b)=>{ for(let i=0;i<a.length;i++){ const c=dtSort(KOL[i])(a[i],b[i]); if(c) return c; } return 0; });
   const kolNaam = k => k.join(' · ');
   // sorteerkop
-  const S = DT.sort || null;
   const sk = (k,mi) => `${k}|${mi}`;
-  const pijl = id => S && S.id===id ? (S.dir<0?' ▼':' ▲') : '';
-  const thS = (id, label, cls, extra='') => `<th class="${cls} srt${S&&S.id===id?' srton':''}" data-dts="${esc(id)}" title="Klik om te sorteren"${extra}>${esc(label)}${pijl(id)}</th>`;
-  const nk = DT.kol.length, nm = M.length, hrows = nk + (nm>1?1:0) || 1;
-  const VS = nk===1 && DT.kol[0]==='jaar' && keys.length>=2; // laatste kolom = verschil tussen de 2 nieuwste jaren
+  const thS = (id, label, cls, extra='') => `<th class="${cls}"${extra}>${esc(label)}</th>`;
+  const FOC = DTFOCUS!=null;
+  const nk = KOL.length, nm = M.length, hrows = nk + (nm>1?1:0) || 1;
+  const VS = nk===1 && KOL[0]==='jaar' && keys.length>=2; // laatste kolom = verschil tussen de 2 nieuwste jaren
   const totLab = VS ? `Verschil ${keys[keys.length-1][0]} t.o.v. ${keys[keys.length-2][0]}` : 'Totaal';
   const vsCel = (items, m) => { const ja=keys[keys.length-1][0], jb=keys[keys.length-2][0];
     const a=dtAgg(items.filter(x=>jaarVan(x)===ja),m), b=dtAgg(items.filter(x=>jaarVan(x)===jb),m);
@@ -1080,11 +1091,12 @@ function drawDT(){
   let h = '<thead>';
   for(let lvl=0; lvl<hrows; lvl++){
     h += '<tr>';
-    if(lvl===0) h += `<th rowspan="${hrows}" class="srt${!S?' srton':''}" data-dts="" title="Klik om op naam te sorteren">${esc(DT.rij.map(k=>DT_VELDEN[k].n).join(' / ')||'')}${!S?' ▲':''}</th>`;
+    if(lvl===0) h += `<th rowspan="${hrows}">Soort</th>` + (FOC ? `<th rowspan="${hrows}">Object</th>` : '');
     if(lvl<nk){
       let i=0; while(i<keys.length){ let j=i; const pre=JSON.stringify(keys[i].slice(0,lvl+1)); while(j<keys.length && JSON.stringify(keys[j].slice(0,lvl+1))===pre) j++;
-        if(lvl===nk-1 && nm===1) h += thS(sk(JSON.stringify(keys[i]),0), keys[i][lvl], 'c');
-        else h += `<th class="c" colspan="${(j-i)*nm}">${esc(keys[i][lvl])}</th>`;
+        const isLoc = KOL[lvl]==='loc', lab = keys[i][lvl];
+        const dot = !isLoc ? '' : LFOC ? `<button type="button" class="stip aan" data-lfoc="" title="Terug naar alle locaties">×</button>` : `<button type="button" class="stip" data-lfoc="${esc(lab)}" title="Toon de afdelingen van ${esc(lab)}"></button>`;
+        h += `<th class="c${isLoc?' locc':''}" colspan="${(j-i)*nm}">${esc(lab)}${dot}</th>`;
         i=j; }
       if(lvl===0) h += nm===1 ? thS(sk('*',0),totLab,'c ltot',` rowspan="${nk}"`) : `<th class="c ltot" colspan="${nm}" rowspan="${nk}">${esc(totLab)}</th>`;
     } else if(nm>1){
@@ -1099,41 +1111,30 @@ function drawDT(){
   const rijCellen = (items, filtR, titel) => keys.map(k=>{ const ks=JSON.stringify(k); const it=items.filter(x=>JSON.stringify(ck(x))===ks);
       return M.map(m=>cel(it,m,x=>filtR(x)&&JSON.stringify(ck(x))===ks, titel+(nk?' – '+kolNaam(k):''))).join(''); }).join('')
     + M.map(m=>VS ? vsCel(items,m) : cel(items,m,filtR,titel,'ltot')).join('');
-  // sorteerwaarde van een groep
-  const sv = items => { if(!S) return 0; const i=S.id.lastIndexOf('|'); const kk=S.id.slice(0,i), mi=+S.id.slice(i+1); const m=M[mi]; if(!m) return 0;
-    const it = kk==='*' ? items : items.filter(x=>JSON.stringify(ck(x))===kk); const n=dtAgg(it,m); return n==null ? -Infinity : n; };
-  function groep(items, d, pad, filtR){
-    const k = DT.rij[d]; const G = {};
-    items.forEach(x=>{ const v=DT_VELDEN[k].g(x); (G[v]=G[v]||[]).push(x); });
-    let namen = Object.keys(G).sort(dtSort(k));
-    if(S && M[+S.id.slice(S.id.lastIndexOf('|')+1)]) namen = namen.map(v=>[v,sv(G[v])]).sort((a,b)=>(a[1]===b[1]?0:(a[1]<b[1]?-1:1))*S.dir || 0).map(x=>x[0]);
-    namen.forEach(v=>{
-      const p=[...pad,v], key=p.join('␟'), laatste = d===DT.rij.length-1, open = !laatste && (DTOPEN.has(key) || !!t);
-      const f = x=>filtR(x) && DT_VELDEN[k].g(x)===v;
-      h += `<tr class="d${Math.min(d,3)}"><td class="dtl${laatste?'':' tog'}" data-dtk="${esc(key)}" style="padding-left:${10+d*20}px">${laatste?'':`<span class="pijl">${open?'▼':'▶'}</span>`}${esc(v)}<span class="aantal">(${G[v].length})</span></td>${rijCellen(G[v], f, p.join(' – '))}</tr>`;
-      if(open) groep(G[v], d+1, p, f);
-    });
-  }
-  if(DT.rij.length) groep(r, 0, [], ()=>true);
-  h += `</tbody><tfoot><tr class="tot"><td>Totaal</td>${rijCellen(r, ()=>true, 'Alles')}</tr></tfoot>`;
+  const GS = {}; r.forEach(x=>{ const v=DT_VELDEN.sub.g(x); (GS[v]=GS[v]||[]).push(x); });
+  Object.keys(GS).sort(dtSort('sub')).forEach(v=>{
+    const fS = x=>DT_VELDEN.sub.g(x)===v;
+    if(!FOC){
+      h += `<tr class="d0"><td class="dtl soortc">${esc(v)}<span class="aantal">(${GS[v].length})</span><button type="button" class="stip" data-foc="${esc(v)}" title="Toon de objecten van ${esc(v)}"></button></td>${rijCellen(GS[v], fS, v)}</tr>`;
+    } else {
+      const GO = {}; GS[v].forEach(x=>{ const o=DT_VELDEN.obj.g(x); (GO[o]=GO[o]||[]).push(x); });
+      const on = Object.keys(GO).sort(dtSort('obj'));
+      on.forEach((o,i)=>{
+        const fO = x=>fS(x) && DT_VELDEN.obj.g(x)===o;
+        h += `<tr class="d1">${i===0?`<td class="dtl soortc" rowspan="${on.length}">${esc(v)}<span class="aantal">(${GS[v].length})</span><button type="button" class="stip aan" data-foc="" title="Terug naar alle soorten">×</button></td>`:''}<td class="dtl">${esc(o)}<span class="aantal">(${GO[o].length})</span></td>${rijCellen(GO[o], fO, v+' – '+o)}</tr>`;
+      });
+    }
+  });
+  h += `</tbody><tfoot><tr class="tot"><td${FOC?' colspan="2"':''}>Totaal${FOC?' '+esc(DTFOCUS):''}${LFOC?' · '+esc(LFOCUS):''}</td>${rijCellen(r, ()=>true, 'Alles')}</tr></tfoot>`;
   $('dtTab').innerHTML = h;
   // filter-info
   const nf_ = Object.values(DT.filt||{}).reduce((a,u)=>a+u.length,0);
   const jt = !heeftJaren() ? '' : jaarNaast() ? 'Jaren naast elkaar' : dtJaar()==='alle' ? 'Alle jaren opgeteld' : 'Jaar '+dtJaar();
   $('dtFiltInfo').textContent = [jt, nf_ ? `Filter actief: ${nf_} waarde${nf_>1?'n':''} verborgen · ${r.length} van ${D.bez.length} regels` : ''].filter(Boolean).join(' · ');
 }
-// sorteren door op een kop te klikken: hoog→laag, laag→hoog, uit
 $('dtTab').addEventListener('click', e=>{
-  const th = e.target.closest('th[data-dts]'); if(!th) return;
-  e.stopImmediatePropagation();
-  const id = th.dataset.dts;
-  if(!id){ DT.sort = null; }
-  else if(!DT.sort || DT.sort.id!==id) DT.sort = {id, dir:-1};
-  else if(DT.sort.dir<0) DT.sort.dir = 1;
-  else DT.sort = null;
-  dtBewaar(); drawDT();
-}, true);
-$('dtTab').addEventListener('click', e=>{
+  const lt = e.target.closest('[data-lfoc]'); if(lt){ LFOCUS = lt.dataset.lfoc || null; drawDT(); return; }
+  const st = e.target.closest('[data-foc]'); if(st){ DTFOCUS = st.dataset.foc || null; drawDT(); return; }
   const g = e.target.closest('td.dtl.tog'); if(g){ const k=g.dataset.dtk; DTOPEN.has(k)?DTOPEN.delete(k):DTOPEN.add(k); drawDT(); return; }
   const c = e.target.closest('td[data-dtc]'); if(!c) return;
   const { filt, titel } = DTCELL[+c.dataset.dtc]; const t=$('dtZoek').value.toLowerCase();
@@ -1277,7 +1278,7 @@ $('dtPrint').onclick = () => {
   if(!w){ alert('Je browser blokkeert het nieuwe venster. Sta pop-ups toe voor deze site.'); return; }
   const tab = $('dtTab').cloneNode(true);
   tab.querySelectorAll('.pijl').forEach(p=>p.remove());
-  const inst = [`Rijen: ${DT.rij.map(k=>DT_VELDEN[k].n).join(', ')||'–'}`, `Kolommen: ${DT.kol.map(k=>DT_VELDEN[k].n).join(', ')||'–'}`, `Waarden: ${(DT.val.length?DT.val:[{m:'waarde',a:'som'}]).map(dtMLabel).join(', ')}`];
+  const inst = [`Rijen: Soort${DTFOCUS!=null?' → '+DTFOCUS+' (objecten)':''}`, `Kolommen: ${jaarNaast()?'Jaar':'Locatie'+(LFOCUS!=null?' → '+LFOCUS+' (afdelingen)':'')}`, `Waarden: ${(DT.val.length?DT.val:[{m:'waarde',a:'som'}]).map(dtMLabel).join(', ')}`];
   const fi = $('dtFiltInfo').textContent, zk = $('dtZoek').value;
   w.document.open(); w.document.write(`<!doctype html><html lang="nl"><head><meta charset="utf-8"><title>Kassen</title><style>
 body{font:12px/1.4 Arial,Helvetica,sans-serif;color:#111;margin:20px}
