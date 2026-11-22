@@ -198,7 +198,7 @@ table.dt td.dtl.tog:hover{background:var(--hl)}
 table.dt td.dtl .pijl{display:inline-block;width:16px;color:var(--green)}
 table.dt td.dtl .aantal{font-weight:400;color:#777;margin-left:4px}
 table.dt tr.d0 td{font-weight:700}
-table.dt tr.d1 td{background:#faf8f3}
+table.dt tr.d1 td{background:transparent}
 table.dt tr.d2 td,table.dt tr.d3 td{background:#fdfcf9;font-size:13px}
 table.dt th.c{text-align:center}
 .dtbar{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end}
@@ -315,12 +315,13 @@ body:not(.beheer) #sheetBtn{display:none}
 #shInfo{font-size:13px;margin-top:6px}
 #shWrap .jexcel > thead > tr > td{cursor:pointer}
 #shWrap .jexcel > thead > tr > td:hover{background:#cfdcf7}
-.dt td.soortc{position:relative;padding-bottom:18px!important;vertical-align:top}
-.dt .stip{position:absolute;left:5px;bottom:3px;width:13px;height:13px;border-radius:50%;border:0;padding:0;background:#2e9e4f;cursor:pointer;color:#fff;font-size:12px;line-height:13px;text-align:center;font-weight:700}
+.dt td.soortc{vertical-align:top;white-space:nowrap}
+.dt .stip{display:inline-block;vertical-align:-1px;margin-right:7px;flex:none;width:13px;height:13px;border-radius:50%;border:0;padding:0;background:#2e9e4f;cursor:pointer;color:#fff;font-size:12px;line-height:13px;text-align:center;font-weight:700}
 .dt .stip:hover{transform:scale(1.25)}
-.dt .stip.aan{background:#1a5fd0;width:16px;height:16px;line-height:15px}
+.dt .stip.aan{background:#1a5fd0;width:15px;height:15px;line-height:14px;vertical-align:-2px}
 #dtOpen,#dtDicht{display:none!important}
-.dt th.locc{position:relative;padding-bottom:18px!important}
+.dt th.locc{white-space:nowrap}
+table.dt .grp{border-left:3px solid #6b6b6b!important}
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -331,7 +332,7 @@ body:not(.beheer) #sheetBtn{display:none}
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.53</span>
+  <span class="versie" title="Versie">v1.56</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="histBtn" hidden title="Wie heeft wat gewijzigd">🕘 Geschiedenis</button>
@@ -1096,12 +1097,12 @@ function drawDT(){
       let i=0; while(i<keys.length){ let j=i; const pre=JSON.stringify(keys[i].slice(0,lvl+1)); while(j<keys.length && JSON.stringify(keys[j].slice(0,lvl+1))===pre) j++;
         const isLoc = KOL[lvl]==='loc', lab = keys[i][lvl];
         const dot = !isLoc ? '' : LFOC ? `<button type="button" class="stip aan" data-lfoc="" title="Terug naar alle locaties">×</button>` : `<button type="button" class="stip" data-lfoc="${esc(lab)}" title="Toon de afdelingen van ${esc(lab)}"></button>`;
-        h += `<th class="c${isLoc?' locc':''}" colspan="${(j-i)*nm}">${esc(lab)}${dot}</th>`;
+        h += `<th class="c${isLoc?' locc':''}${nm>1?' grp':''}" colspan="${(j-i)*nm}">${dot}${esc(lab)}</th>`;
         i=j; }
-      if(lvl===0) h += nm===1 ? thS(sk('*',0),totLab,'c ltot',` rowspan="${nk}"`) : `<th class="c ltot" colspan="${nm}" rowspan="${nk}">${esc(totLab)}</th>`;
+      if(lvl===0) h += nm===1 ? thS(sk('*',0),totLab,'c ltot',` rowspan="${nk}"`) : `<th class="c ltot grp" colspan="${nm}" rowspan="${nk}">${esc(totLab)}</th>`;
     } else if(nm>1){
-      keys.forEach(k=>M.forEach((m,mi)=>h+=thS(sk(JSON.stringify(k),mi), dtMLabel(m), 'r asub')));
-      M.forEach((m,mi)=>h+=thS(sk('*',mi), dtMLabel(m), 'r asub ltot'));
+      keys.forEach(k=>M.forEach((m,mi)=>h+=thS(sk(JSON.stringify(k),mi), dtMLabel(m), 'r asub'+(mi===0?' grp':''))));
+      M.forEach((m,mi)=>h+=thS(sk('*',mi), dtMLabel(m), 'r asub ltot'+(mi===0?' grp':'')));
     } else if(nk===0){
       M.forEach((m,mi)=>h+=thS(sk('*',mi), dtMLabel(m), 'r'));
     }
@@ -1109,19 +1110,19 @@ function drawDT(){
   }
   h += '</thead><tbody>';
   const rijCellen = (items, filtR, titel) => keys.map(k=>{ const ks=JSON.stringify(k); const it=items.filter(x=>JSON.stringify(ck(x))===ks);
-      return M.map(m=>cel(it,m,x=>filtR(x)&&JSON.stringify(ck(x))===ks, titel+(nk?' – '+kolNaam(k):''))).join(''); }).join('')
-    + M.map(m=>VS ? vsCel(items,m) : cel(items,m,filtR,titel,'ltot')).join('');
+      return M.map((m,mi)=>cel(it,m,x=>filtR(x)&&JSON.stringify(ck(x))===ks, titel+(nk?' – '+kolNaam(k):''), nm>1&&mi===0?'grp':'')).join(''); }).join('')
+    + M.map((m,mi)=>VS ? vsCel(items,m) : cel(items,m,filtR,titel,'ltot'+(nm>1&&mi===0?' grp':''))).join('');
   const GS = {}; r.forEach(x=>{ const v=DT_VELDEN.sub.g(x); (GS[v]=GS[v]||[]).push(x); });
   Object.keys(GS).sort(dtSort('sub')).forEach(v=>{
     const fS = x=>DT_VELDEN.sub.g(x)===v;
     if(!FOC){
-      h += `<tr class="d0"><td class="dtl soortc">${esc(v)}<span class="aantal">(${GS[v].length})</span><button type="button" class="stip" data-foc="${esc(v)}" title="Toon de objecten van ${esc(v)}"></button></td>${rijCellen(GS[v], fS, v)}</tr>`;
+      h += `<tr class="d0"><td class="dtl soortc"><button type="button" class="stip" data-foc="${esc(v)}" title="Toon de objecten van ${esc(v)}"></button>${esc(v)}<span class="aantal">(${GS[v].length})</span></td>${rijCellen(GS[v], fS, v)}</tr>`;
     } else {
       const GO = {}; GS[v].forEach(x=>{ const o=DT_VELDEN.obj.g(x); (GO[o]=GO[o]||[]).push(x); });
       const on = Object.keys(GO).sort(dtSort('obj'));
       on.forEach((o,i)=>{
         const fO = x=>fS(x) && DT_VELDEN.obj.g(x)===o;
-        h += `<tr class="d1">${i===0?`<td class="dtl soortc" rowspan="${on.length}">${esc(v)}<span class="aantal">(${GS[v].length})</span><button type="button" class="stip aan" data-foc="" title="Terug naar alle soorten">×</button></td>`:''}<td class="dtl">${esc(o)}<span class="aantal">(${GO[o].length})</span></td>${rijCellen(GO[o], fO, v+' – '+o)}</tr>`;
+        h += `<tr class="d1">${i===0?`<td class="dtl soortc" rowspan="${on.length}"><button type="button" class="stip aan" data-foc="" title="Terug naar alle soorten">×</button>${esc(v)}<span class="aantal">(${GS[v].length})</span></td>`:''}<td class="dtl">${esc(o)}<span class="aantal">(${GO[o].length})</span></td>${rijCellen(GO[o], fO, v+' – '+o)}</tr>`;
       });
     }
   });
