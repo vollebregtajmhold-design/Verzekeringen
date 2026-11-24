@@ -359,7 +359,7 @@ table.dt th.locc:not(:has(.aan)){padding-left:10px!important;padding-right:10px!
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.72</span>
+  <span class="versie" title="Versie">v1.73</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="histBtn" hidden title="Wie heeft wat gewijzigd">🕘 Geschiedenis</button>
@@ -991,7 +991,7 @@ $('pvSlot').onclick = () => { zetPrive(false); document.querySelector('nav butto
 $('pvWijzig').onclick = () => nieuwPw('🔑 Wachtwoord wijzigen');
 
 // ---------- knopje naar Firebase (eigen wachtwoord) ----------
-const FB_URL = 'https://console.firebase.google.com/project/verzekeringen-vollebregt/firestore/databases/-default-/data/~2Foverzicht';
+const FB_URL = 'https://console.firebase.google.com/u/0/project/verzekeringen-vollebregt/firestore/databases/-default-/data/~2Foverzicht?authuser=vollebregt.ajmhold%40gmail.com';
 const hashFb = async pw => { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('verz-firebase:'+pw)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); };
 $('fbBtn').onclick = async () => {
   if(!BEHEER) return;
