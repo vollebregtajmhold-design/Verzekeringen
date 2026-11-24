@@ -321,7 +321,7 @@ body:not(.beheer) #sheetBtn{display:none}
 .dt .stip.aan{background:#1a5fd0}
 #dtOpen,#dtDicht{display:none!important}
 .dt th.locc{white-space:nowrap;position:relative;padding-right:28px!important;padding-left:28px!important}
-table.dt .grp{border-left:3px solid #6b6b6b!important}
+table.dt .grp{border-left:3px solid #000!important}
 #dtTerug{font:inherit;font-weight:700;font-size:20px;line-height:1;padding:6px 14px;border:2px solid var(--green);border-radius:8px;background:var(--mint);color:var(--ink);cursor:pointer}
 #dtTerug:disabled{opacity:.35;cursor:default}
 #filesLijst a.btn.klein{text-decoration:none;padding:4px 10px}
@@ -338,6 +338,11 @@ button.fbtn.dkn.leeg{background:#fff;color:var(--blue);border:1px dashed var(--b
 table.dt td.soortc,table.dt th.locc{cursor:pointer;user-select:none}
 table.dt td.soortc:hover{background:#e6f2ea!important}
 table.dt th.locc:hover{background:#cfe3d6!important}
+table.dt{border-collapse:collapse}
+table.dt th,table.dt td{border:1px solid #000!important}
+table.dt .stip:not(.aan){display:none}
+table.dt td.soortc:not(:has(.aan)){padding-right:10px!important}
+table.dt th.locc:not(:has(.aan)){padding-left:10px!important;padding-right:10px!important}
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -348,7 +353,7 @@ table.dt th.locc:hover{background:#cfe3d6!important}
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.69</span>
+  <span class="versie" title="Versie">v1.70</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="histBtn" hidden title="Wie heeft wat gewijzigd">🕘 Geschiedenis</button>
