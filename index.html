@@ -359,11 +359,12 @@ table.dt th.locc:not(:has(.aan)){padding-left:10px!important;padding-right:10px!
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.71</span>
+  <span class="versie" title="Versie">v1.72</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="histBtn" hidden title="Wie heeft wat gewijzigd">🕘 Geschiedenis</button>
     <button class="btn" id="expBtn" hidden title="Alle gegevens downloaden als back-up">⬇ Back-up</button>
+    <button class="btn klein" id="fbBtn" hidden title="Firebase openen (met wachtwoord)">🔧</button>
     <button class="btn" id="uit">Uitloggen</button>
   </div>
   <button class="fs" id="fsBtn" title="Volledig scherm aan/uit">⛶ Volledig scherm</button>
@@ -988,6 +989,30 @@ function zetPrive(open){
 }
 $('pvSlot').onclick = () => { zetPrive(false); document.querySelector('nav button[data-t="dt"]').click(); toast('Privé vergrendeld 🔒'); };
 $('pvWijzig').onclick = () => nieuwPw('🔑 Wachtwoord wijzigen');
+
+// ---------- knopje naar Firebase (eigen wachtwoord) ----------
+const FB_URL = 'https://console.firebase.google.com/project/verzekeringen-vollebregt/firestore/databases/-default-/data/~2Foverzicht';
+const hashFb = async pw => { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('verz-firebase:'+pw)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); };
+$('fbBtn').onclick = async () => {
+  if(!BEHEER) return;
+  if(!D.meta?.fbHash){
+    for(;;){
+      const r = await vraagPw('🔑 Wachtwoord voor Firebase', 'Kies een wachtwoord voor het Firebase-knopje (minstens 4 tekens). Neem een ander wachtwoord dan voor Privé.', true);
+      if(!r) return;
+      if(r.a.length<4){ alert('Het wachtwoord moet minstens 4 tekens hebben.'); continue; }
+      if(r.a!==r.b){ alert('De twee wachtwoorden zijn niet gelijk.'); continue; }
+      const h = await hashFb(r.a);
+      try{ await runTransaction(db, async tx => { tx.set(doc(db,'overzicht','meta'), {fbHash:h}, {merge:true}); }); D.meta = {...D.meta, fbHash:h}; toast('Wachtwoord opgeslagen ✔'); }
+      catch(e){ alert('Opslaan mislukt: '+e.message); return; }
+      break;
+    }
+  } else {
+    const r = await vraagPw('🔧 Firebase', 'Voer het wachtwoord in om Firebase te openen.', false);
+    if(!r) return;
+    if(await hashFb(r.a)!==D.meta.fbHash){ alert('Wachtwoord klopt niet.'); return; }
+  }
+  window.open(FB_URL, '_blank', 'noopener');
+};
 
 // ---------- wie bewerkt + geschiedenis ----------
 const BEWERKERS = ['Arno','Monique','Quintes'];
@@ -1771,7 +1796,7 @@ onAuthStateChanged(auth, async user => {
   const beheer = beheerders.includes(user.email.toLowerCase());
   BEHEER = beheer; document.body.classList.toggle('beheer', beheer); $('pvWijzig').hidden = !beheer;
   $('user').hidden=false; $('uit').title='Ingelogd als '+user.email;
-  ['editBtn','expBtn','upBtn','histBtn'].forEach(i=>$(i).hidden=!beheer);
+  ['editBtn','expBtn','upBtn','histBtn','fbBtn'].forEach(i=>$(i).hidden=!beheer);
   try {
     const meta = await getDoc(doc(db,'overzicht','meta'));
     if (!meta.exists()) {
