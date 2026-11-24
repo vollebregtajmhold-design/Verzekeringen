@@ -335,6 +335,9 @@ button.fbtn.dkn.leeg{background:#fff;color:var(--blue);border:1px dashed var(--b
 #lnkForm .lnkrij{display:flex;gap:10px}#lnkForm .lnkrij > div{flex:1}
 #lnkForm .lnkknop{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
 #samDatumRij{display:flex;align-items:center;gap:8px;margin:8px 0 0}#samDatumRij input{width:auto}
+table.dt td.soortc,table.dt th.locc{cursor:pointer;user-select:none}
+table.dt td.soortc:hover{background:#e6f2ea!important}
+table.dt th.locc:hover{background:#cfe3d6!important}
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -345,7 +348,7 @@ button.fbtn.dkn.leeg{background:#fff;color:var(--blue);border:1px dashed var(--b
 <header>
   <span class="dot"></span>
   <h1>Verzekeringen overzicht</h1>
-  <span class="versie" title="Versie">v1.68</span>
+  <span class="versie" title="Versie">v1.69</span>
   <div class="user" id="user" hidden>
     <button class="btn" id="editBtn" hidden title="Wijzigen, toevoegen en verwijderen aan/uit">✏️ Bewerken</button>
     <button class="btn" id="histBtn" hidden title="Wie heeft wat gewijzigd">🕘 Geschiedenis</button>
@@ -1191,8 +1194,8 @@ function drawDT(){
   $('dtFiltInfo').textContent = [jt, nf_ ? `Filter actief: ${nf_} waarde${nf_>1?'n':''} verborgen · ${r.length} van ${D.bez.length} regels` : ''].filter(Boolean).join(' · ');
 }
 $('dtTab').addEventListener('click', e=>{
-  const lt = e.target.closest('[data-lfoc]'); if(lt){ LFOCUS = lt.dataset.lfoc || null; drawDT(); return; }
-  const st = e.target.closest('[data-foc]'); if(st){ DTFOCUS = st.dataset.foc || null; drawDT(); return; }
+  const ltc = e.target.closest('th.locc'), lt = ltc && ltc.querySelector('[data-lfoc]'); if(lt){ LFOCUS = lt.dataset.lfoc || null; drawDT(); return; }
+  const stc = e.target.closest('td.soortc'), st = stc && stc.querySelector('[data-foc]'); if(st){ DTFOCUS = st.dataset.foc || null; drawDT(); return; }
   const g = e.target.closest('td.dtl.tog'); if(g){ const k=g.dataset.dtk; DTOPEN.has(k)?DTOPEN.delete(k):DTOPEN.add(k); drawDT(); return; }
   const c = e.target.closest('td[data-dtc]'); if(!c) return;
   const { filt, titel } = DTCELL[+c.dataset.dtc]; const t=$('dtZoek').value.toLowerCase();
